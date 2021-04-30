@@ -1,0 +1,728 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="100")
+opts_chunk$set(# echo=TRUE,
+	             cache = TRUE,
+               prompt = FALSE,
+               tidy = FALSE,
+               comment = NA,
+	             cache.lazy = FALSE,
+               message = FALSE,
+               warning = FALSE,
+	             fig.align = "center",
+	             fig.height = 5,
+	             fig.width = 5)
+opts_knit$set(width=100)
+```
+
+### 6.2 데이터 전처리
+
+#### 6.2.1 데이터 및 패키지 불러오기
+
+```{r}
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(reshape)
+library(ggsci)
+
+DIR = "D:\\CSV\\archive\\"
+DEC_2019 = fread(paste0(DIR, "2019-Dec.csv"))
+str(DEC_2019)
+DEC_2019 = as.data.frame(DEC_2019)
+```
+
+#### 6.2.2 이벤트 로그 데이터   
+
+```{r}
+Customer_ID = unique(DEC_2019$user_id)
+Customer_Example = Customer_ID[50]
+
+Example_DF = DEC_2019 %>%
+  filter(user_id == Customer_Example) %>%
+  mutate(event_time2 = as.POSIXct(event_time)) %>%
+  arrange(event_time2) %>%
+  select(user_id,event_time2,event_type,product_id,category_id) %>%
+  as.data.frame() 
+
+knitr::kable(Example_DF)
+```
+
+### 6.3 고객 구매 데이터 분석   
+
+#### 6.3.1 데이터 전처리   
+
+```{r}
+set.seed(1234)
+
+Customer_Sample = sample(Customer_ID, 1000, replace = FALSE)
+
+Sample_Data = DEC_2019 %>%
+  filter(user_id %in% Customer_Sample) %>%
+  mutate(event_type = factor(event_type, 
+		    levels = c("view","cart",
+		               "remove_from_cart",
+		               "purchase"))) %>%
+  mutate(event_time2 = as.POSIXct(event_time)) %>%
+  select(user_id,event_time2,event_type,product_id,
+         category_id,brand, price) %>%
+  arrange(user_id, event_time2)
+```
+
+```{r}
+Sample_Data = Sample_Data %>%
+  mutate(Day = format(event_time2, "%a"),
+         Day = factor(Day, levels = c("일","월","화","수",
+                                      "목","금","토")),
+         Time = format(event_time2, "%H"),
+         Time = as.numeric(Time),
+         Time_G = ifelse(Time < 9, "새벽",
+                         ifelse(Time < 13, "오전",
+                                ifelse(Time < 19, "오후","저녁"))),
+         Time_G = factor(Time_G, levels = c("새벽","오전","오후","저녁")))
+
+knitr::kable(head(Sample_Data,10))
+```
+
+#### 6.3.2 데이터 시각화     
+
+- 요일에 따른 이벤트 로그 시각화   
+
+```{r}
+Sample_Data %>%
+  ggplot() +
+  geom_bar(aes(x = Day, fill = event_type)) +
+  scale_fill_nejm() +
+  xlab("") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+Sample_Data %>%
+  group_by(Day, event_type) %>%
+  summarise(Count = n()) %>%
+  mutate(Perc = Count/sum(Count) * 100) %>%
+  ggplot() +
+  geom_bar(aes(x = Day,y = Perc, fill = event_type), stat = 'identity') +
+  geom_text(aes(x = Day, y = Perc, label = round(Perc,2), fill = event_type),
+             position = position_stack(0.5), col = "white", size = 5) +
+  scale_fill_nejm() +
+  xlab("") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+- 시간별 데이터 분석   
+
+```{r}
+Sample_Data %>%
+  ggplot() +
+  geom_bar(aes(x = Time, fill = Time_G)) +
+  scale_fill_nejm() +
+  xlab("") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+- 일별 데이터 분석   
+
+```{r}
+Sample_Data %>%
+  filter(event_type == "purchase") %>%
+  mutate(Date = as.Date(event_time2)) %>%
+  group_by(Date) %>%
+  summarise(Count = n(),
+            Price = sum(price)) %>%
+  ggplot() +
+  geom_point(aes(x = Date, y = Count)) +
+  geom_line(aes(x = Date, y = Count)) +
+theme_bw()
+
+Sample_Data %>%
+  filter(event_type == "purchase") %>%
+  mutate(Date = as.Date(event_time2)) %>%
+  group_by(Date) %>%
+  summarise(Count = n(),
+            Price = sum(price)) %>%
+  ggplot() +
+  geom_point(aes(x = Date, y = Price)) +
+  geom_line(aes(x = Date, y = Price)) +
+  theme_bw()
+```
+
+- 월별 데이터 분석    
+
+```{r}
+FILES = list.files(DIR)
+
+for(k in 1:length(FILES)){
+  
+  assign(gsub(".csv","",FILES[k]),
+         fread(paste0(DIR, FILES[k])))
+  
+}
+
+Total_DF = rbind(`2019-Oct`,`2019-Nov`,`2019-Dec`,
+                 `2020-Jan`,`2020-Feb`)
+```
+
+```{r}
+Customer_ID2 = unique(Total_DF$user_id)
+
+set.seed(1234)
+Customer_Sample2 = sample(Customer_ID2, 50000, replace = FALSE)
+```
+
+```{r}
+Sample_Data2 = Total_DF %>%
+  filter(user_id %in% Customer_Sample2) %>%
+mutate(event_type = factor(event_type, 
+levels = c("view","cart","remove_from_cart","purchase"))) %>%
+  mutate(event_time2 = as.POSIXct(event_time)) %>%
+  arrange(event_time2) %>%
+  select(user_id,event_time2,event_type,product_id,category_id,brand, price) %>%
+  arrange(user_id, event_time2)
+
+Sample_Data2 = Sample_Data2 %>%
+  mutate(Day = format(event_time2, "%a"),
+         Day = factor(Day, levels = c("일","월","화","수",
+                                      "목","금","토")),
+         Time = format(event_time2, "%H"),
+         Time = as.numeric(Time),
+         Time_G = ifelse(Time < 9, "새벽",
+                         ifelse(Time < 13, "오전",
+                                ifelse(Time < 19, "오후","저녁"))),
+         Time_G = factor(Time_G, levels = c("새벽","오전","오후","저녁")),
+         Month = format(event_time2,"%m"),
+         Month = as.numeric(Month),
+         YM = paste0(format(event_time2,"%y"),"-",format(event_time2,"%m")))
+
+```
+
+```{r}
+# 이중 축 설정
+Monthly = Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  group_by(YM) %>%
+  summarise(Price = sum(price),
+            Count = n())
+
+Monthly
+
+Max_Count = max(Monthly$Count) * 5 
+
+Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  group_by(YM) %>%
+  summarise(Price = sum(price),
+            Count = n()) %>%
+  ggplot() +
+  geom_bar(aes(x = YM, y = Price), stat = 'identity', alpha = 0.5) +
+  geom_line(aes(x = YM, y = Count * 5), group = 1, col = "red", size = 2) +
+  geom_label(aes(x = YM, y = Price, label = Price)) +
+  scale_y_continuous(sec.axis = sec_axis(~.*Max_Count, name="Sailing Count")) +
+  theme_bw()
+
+```
+
+### 6.4 대시보드 설계   
+
+#### 6.4.1 대시보드를 위한 통계치 표현    
+
+- 접속 고객 수, 구매 고객 수   
+
+```{r}
+Total_N1 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  group_by(user_id) %>%
+  summarise(Count = n()) %>%
+  nrow()
+
+Total_N2 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  group_by(user_id) %>%
+  summarise(Count = n()) %>%
+  nrow()
+
+Purchase_N1 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(user_id) %>%
+  summarise(Count = n()) %>%
+  nrow()
+
+Purchase_N2 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(user_id) %>%
+  summarise(Count = n()) %>%
+  nrow()
+```
+
+```{r}
+print(paste0("방문 고객: ", 
+             Total_N1,"명",
+             "(전월대비: ",round(Total_N1/Total_N2 * 100,2),
+             "%)"))
+```
+
+```{r}
+print(paste0("구매 고객: ", 
+             Purchase_N1,"명",
+             "(전월대비: ",round(Purchase_N1/Purchase_N2 * 100,2),
+             "%)"))
+```
+
+- 총 판매 건수, 판매 금액   
+
+```{r}
+# 판매 건수  
+
+Product_N1 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(product_id) %>%
+  summarise(Count = n())
+
+Product_N2 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(product_id) %>%
+  summarise(Count = n())
+```
+
+```{r}
+print(paste0("총 판매 물품: ", 
+             nrow(Product_N1),"EA",
+             "(전월대비: ",round(nrow(Product_N1)/nrow(Product_N2) * 100,2),
+             "%)"))
+```
+
+
+```{r}
+# 판매 금액
+
+Product_N3 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(user_id) %>%
+  summarise(Price = sum(price))
+
+Product_N4 = Sample_Data2 %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  filter(event_type == "purchase") %>%
+  group_by(user_id) %>%
+  summarise(Price = sum(price))
+
+```
+
+```{r}
+print(paste0("총 판매액: $", 
+             sum(Product_N3$Price),
+             "(전월대비: ",round(sum(Product_N3$Price)/sum(Product_N4$Price) * 100,2),
+             "%)"))
+
+```
+
+- 일별 판매액 시각화   
+
+```{r}
+Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  mutate(Date = as.Date(event_time2)) %>%
+  group_by(Date) %>%
+  summarise(Count = n(),
+            Price = sum(price)) %>%
+  as.data.frame() %>%
+  melt(id.vars = c("Date")) %>%
+  ggplot() +
+  geom_point(aes(x = Date, y = value, col = variable)) +
+  geom_line(aes(x = Date, y = value, col = variable, group = variable)) +
+  labs(col = "") + ylab("Sales Value") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+
+- 판매 카테고리 순위   
+
+```{r}
+Category_N1 = Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  mutate(category_id = as.character(category_id)) %>%
+  group_by(category_id) %>%
+  summarise(`현재 매출` = n()) %>%
+  top_n(n = 10, wt = `현재 매출`)
+
+Category_N2 = Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  mutate(category_id = as.character(category_id)) %>%
+  filter(category_id %in% Category_N1$category_id) %>%
+  group_by(category_id) %>%
+  summarise(`전월 매출` = n()) %>%
+  top_n(n = 10, wt = `전월 매출`)
+```
+
+```{r}
+Category_N1 %>%
+  left_join(Category_N2, by = "category_id") %>%
+  as.data.frame() %>%
+  melt(id.vars = c("category_id")) %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(category_id,value), 
+               y = value, fill = variable), stat = 'identity',
+           position = "dodge") +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_discrete(limits = c("전월 매출", "현재 매출")) +
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(fill = "") +
+  xlab("Category ID") + ylab("판매 건수") 
+```
+
+- 판매 제품 순위    
+
+```{r}
+Product_N1 = Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  filter(event_time2 >= "2020-02-01") %>%
+  mutate(product_id = as.character(product_id)) %>%
+  group_by(product_id) %>%
+  summarise(`현재 매출` = n()) %>%
+  top_n(n = 10, wt = `현재 매출`)
+
+Product_N2 = Sample_Data2 %>%
+  filter(event_type == "purchase") %>%
+  filter(event_time2 >= "2020-01-01" & event_time2 < "2020-02-01") %>%
+  mutate(product_id = as.character(product_id)) %>%
+  filter(product_id %in% Product_N1$product_id) %>%
+  group_by(product_id) %>%
+  summarise(`전월 매출` = n()) %>%
+  top_n(n = 10, wt = `전월 매출`)
+
+Product_N1 %>%
+  left_join(Product_N2, by = "product_id") %>%
+  as.data.frame() %>%
+  melt(id.vars = c("product_id")) %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(product_id,value), 
+               y = value, fill = variable), stat = 'identity',
+           position = "dodge") +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_discrete(limits = c("전월 매출", "현재 매출")) +
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(fill = "") +
+  xlab("Category ID") + ylab("판매 건수") 
+
+```
+
+- 월 필터링   
+
+```{r}
+library(lubridate)
+
+Filtering = function(DF, P){
+  
+  B = P - months(1)
+  A = P + months(1)
+  
+  Total_N1 = DF %>%
+    filter(event_time2 >= P & event_time2 < A) %>%
+    group_by(user_id) %>%
+    summarise(Count = n()) %>%
+    nrow()
+
+  Total_N2 = DF %>%
+    filter(event_time2 >= B & event_time2 < P) %>%
+    group_by(user_id) %>%
+    summarise(Count = n()) %>%
+    nrow()
+  
+  Purchase_N1 = DF %>%
+    filter(event_time2 >= P & event_time2 < A) %>%
+    filter(event_type == "purchase") %>%
+    group_by(user_id) %>%
+    summarise(Count = n()) %>%
+    nrow()
+  
+  Purchase_N2 = DF %>%
+    filter(event_time2 >= B & event_time2 < P) %>%
+    filter(event_type == "purchase") %>%
+    group_by(user_id) %>%
+    summarise(Count = n()) %>%
+    nrow()
+  
+  print(paste0("현재 월: ", format(P, "%m"),"월"))
+  
+  print(paste0("방문 고객: ", 
+               Total_N1,"명",
+               "(전월대비: ",round(Total_N1/Total_N2 * 100,2),
+               "%)"))
+  
+  print(paste0("구매 고객: ", 
+               Purchase_N1,"명",
+               "(전월대비: ",round(Purchase_N1/Purchase_N2 * 100,2),
+               "%)"))
+    
+}
+
+```
+
+```{r}
+P = as.Date("2020-02-01")
+Filtering(DF = Sample_Data2, 
+          P = P)
+```
+
+#### 6.5.2 대시보드 예시   
+
+- 지표 점수 계산     
+
+```{r}
+Sample_Data2_201910 = Sample_Data2 %>%
+  filter(event_time2 >= "2019-10-01" & event_time2 < "2019-11-01") 
+
+RFM = Sample_Data2_201910 %>%
+  filter(event_type == "purchase") %>%
+  mutate(event_Day = as.Date(event_time2)) %>%
+  group_by(user_id) %>%
+  summarise(Frequency = n(),
+             Recent_Purchase = max(event_Day),
+             Monetary = sum(price)) %>%
+mutate(Recency = difftime(as.Date("2019-11-01"),
+			Recent_Purchase, units = "day"),
+          Recency = as.numeric(Recency)) %>%
+  select(user_id, Recent_Purchase, Recency, 
+         Frequency, Monetary)
+
+knitr::kable(RFM[1:10,])
+```
+
+- 지표 등급 계산   
+
+```{r}
+Grade_Calculation = function(x, Probs){
+  
+  Q = quantile(x, probs = Probs)
+  
+  THRESHOLD =c(0,Q,max(x)+1)
+  
+  Grade = cut(x = x, 
+              breaks = THRESHOLD,
+              include.lowest = TRUE,
+              right = FALSE,
+              labels = 1:(length(THRESHOLD)-1))
+  
+  Grade = as.numeric(as.character(Grade))
+
+  return(Grade)  
+}
+
+Recency_G = Grade_Calculation(x = 1/RFM$Recency, Probs = c(0.5,0.7,0.9))
+Frequency_G = Grade_Calculation(x = RFM$Frequency, Probs = c(0.5,0.7,0.9))
+Monetary_G = Grade_Calculation(x = RFM$Monetary, Probs = c(0.5,0.7,0.9))
+
+```
+
+
+- 고객 점수 계산   
+
+```{r}
+Grade_Allocation = function(Frequency_G,
+                               Monetary_G,
+                               Recency_G,
+                               F_weight,
+                               M_weight,
+                               R_weight){
+  
+  y = Frequency_G * F_weight + Monetary_G * M_weight + Recency_G * R_weight
+  
+  return(y)
+  
+  }
+```
+
+```{r}
+Customer_Grade = Grade_Allocation(Frequency_G = Frequency_G,
+                                     Monetary_G = Monetary_G,
+                                     Recency_G = Recency_G,
+                                     F_weight = 0.4,
+                                     M_weight = 0.5,
+                                     R_weight = 0.3)
+
+```
+
+```{r}
+ggplot() +
+  geom_histogram(aes(x = Customer_Grade)) +
+  theme_bw()
+
+```
+
+- 고객 등급 할당   
+
+```{r}
+Customer_Grade_C = function(x){
+  
+  y = cut(x,
+      breaks = c(0, 1, 2, 3, 4, 10),
+      labels = c("D","C","B","A","S"),
+      include.lowest = TRUE,
+      right = FALSE)
+  
+  y = factor(y, levels = c("S","A","B","C","D"))
+  
+  return(y)
+  
+}
+```
+
+```{r}
+OCT_Grade = Customer_Grade_C(x = Customer_Grade)
+RFM$OCT_Grade = OCT_Grade
+```
+
+#### 6.5.3 코호트 분석   
+
+```{r}
+DATA_Filter = function(DATA, START_DATE, END_DATE){
+  
+  DATA2 = DATA %>%
+    filter(event_time2 >= START_DATE & event_time2 < END_DATE) 
+
+  RFM = DATA2 %>%
+    filter(event_type == "purchase") %>%
+    mutate(event_Day = as.Date(event_time2)) %>%
+    # distinct(user_id, event_Day) %>%
+    group_by(user_id) %>%
+    summarise(Frequency = n(),
+              Recent_Purchase = max(event_Day),
+              Monetary = sum(price)) %>%
+    mutate(Recency = difftime(END_DATE,Recent_Purchase, units = "day"),
+           Recency = as.numeric(Recency)) %>%
+    select(user_id, Recent_Purchase, Recency, 
+           Frequency, Monetary)
+  
+  
+  return(RFM)
+}
+
+```
+
+- 코호트 분석   
+
+```{r}
+DATA_OCT = DATA_Filter(DATA = Sample_Data2,
+                       START_DATE = "2019-10-01", 
+                       END_DATE = "2019-11-01")
+
+Frequency_G = Grade_Calculation(x = DATA_OCT$Frequency, Probs = c(0.5,0.7,0.9))
+Monetary_G = Grade_Calculation(x = DATA_OCT$Monetary, Probs = c(0.5,0.7,0.9))
+Recency_G = Grade_Calculation(x = 1/DATA_OCT$Recency, Probs = c(0.5,0.7,0.9))
+
+Customer_Grade_OCT = Grade_Allocation(Frequency_G = Frequency_G,
+                                      Monetary_G = Monetary_G,
+                                      Recency_G = Recency_G,
+                                      F_weight = 0.4,
+                                      M_weight = 1.5,
+                                      R_weight = 0.3)
+
+OCT_Grade = Customer_Grade_C(x = Customer_Grade_OCT)
+
+COHORT_OCT = data.frame(
+  user_id = DATA_OCT$user_id,
+  OCT_Grade = OCT_Grade
+)
+
+```
+
+```{r}
+DATA_NOV = DATA_Filter(DATA = Sample_Data2,
+                       START_DATE = "2019-11-01", 
+                       END_DATE = "2019-12-01")
+
+
+Frequency_G = Grade_Calculation(x = DATA_NOV$Frequency, Probs = c(0.5,0.7,0.9))
+Monetary_G = Grade_Calculation(x = DATA_NOV$Monetary, Probs = c(0.5,0.7,0.9))
+Recency_G = Grade_Calculation(x = 1/DATA_NOV$Recency, Probs = c(0.5,0.7,0.9))
+
+Customer_Grade_NOV = Grade_Allocation(Frequency_G = Frequency_G,
+                                          Monetary_G = Monetary_G,
+                                          Recency_G = Recency_G,
+                                          F_weight = 0.4,
+                                          M_weight = 1.5,
+                                          R_weight = 0.3)
+
+NOV_Grade = Customer_Grade_C(x = Customer_Grade_NOV)
+
+COHORT_NOV = data.frame(
+  user_id = DATA_NOV$user_id,
+  NOV_Grade = NOV_Grade
+)
+
+```
+
+- 코호트 분석   
+
+```{r}
+COHORT = COHORT_OCT %>%
+  full_join(COHORT_NOV, by = "user_id") %>%
+  mutate(OCT_Grade = as.character(OCT_Grade),
+         NOV_Grade = as.character(NOV_Grade),
+         OCT_Grade = ifelse(is.na(OCT_Grade),"None Grade",OCT_Grade),
+         NOV_Grade = ifelse(is.na(NOV_Grade),"None Grade",NOV_Grade))
+
+COHORT_SANKEY = COHORT %>%
+  as.data.frame() %>%
+  melt(id.vars = c("user_id")) %>%
+  mutate(value = factor(value, levels = c("S","A","B","C","D","None Grade")))
+
+# install.packages("ggalluvial")
+library(ggalluvial)
+
+ggplot(COHORT_SANKEY,
+       aes(x = variable, stratum = value, alluvium = user_id,
+           y = 1), alpha = 0.4) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow(aes(fill = value), alpha = 0.4) +
+  geom_stratum(aes(fill = value), alpha = 0.5) +
+  geom_label(aes(label = value),stat = "stratum", size = 3) +
+  xlab("") + ylab("") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,290 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="100")
+opts_chunk$set(# echo=TRUE,
+	             cache = TRUE,
+               prompt = FALSE,
+               tidy = FALSE,
+               comment = NA,
+               message = FALSE,
+               warning = FALSE,
+	             fig.align = "center",
+	             fig.height = 5,
+	             fig.width = 5)
+opts_knit$set(width=100)
+```
+
+
+### 4.1 중고차 데이터 분할을 위한 데이터 분석 기법
+
+#### 4.1.1 비슷한 유형의 중고차 탐색   
+
+- 데이터 및 패키지 불러오기   
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(reshape)
+
+DIR = "D:\\CSV\\UsedCar\\"
+Audi = read.csv(paste0(DIR, "Audi.csv"),stringsAsFactors = FALSE)
+```
+
+- 유사도 기준   
+
+```{r}
+Normalization = function(x){
+  
+  y = (x-min(x))/(max(x)-min(x))
+  
+  return(y)
+  
+}
+
+Audi$mileage_Norm = Normalization(Audi$mileage)
+Audi$mpg_Norm = Normalization(Audi$mpg)
+```
+
+- 유클리디안 거리   
+
+```{r}
+Dist_Fun = function(x1,x2){
+  
+  y1 = (x1-x2)^2
+  y2 = sum(y1)
+  y3 = sqrt(y2)
+  
+  return(y3)
+  
+}
+```
+
+```{r}
+Dist_Fun(x1 = Audi[1,c("mileage_Norm", "mpg_Norm")],
+         x2 = Audi[2,c("mileage_Norm", "mpg_Norm")])
+
+```
+
+```{r}
+Audi$transmission_Manual = ifelse(Audi$transmission == "Manual", 1, 0)
+Audi$transmission_Automatic = ifelse(Audi$transmission == "Automatic", 1, 0)
+
+Audi$fuelType_Petrol = ifelse(Audi$fuelType == "Petrol", 1, 0)
+Audi$fuelType_Diesel = ifelse(Audi$fuelType == "Diesel", 1, 0)
+```
+
+```{r}
+Audi2 = Audi %>%
+  select(year, price, mileage, tax, mpg, 
+         engineSize, transmission_Manual, transmission_Automatic,
+         fuelType_Petrol, fuelType_Diesel)
+
+Audi2 = apply(Audi2, MARGIN = 2, FUN = Normalization)
+```
+
+```{r}
+Dist_Fun2 = function(x){
+  
+  Matrix = matrix(data = 0,
+                  nrow = nrow(x),
+                  ncol = nrow(x)
+                  )
+  
+  for(k in 1:nrow(x)){
+    
+    for(i in k:nrow(x)){
+      
+      y1 = (x[k,]-x[i,])^2
+      y2 = sum(y1)
+      y3 = sqrt(y2)
+      
+      Matrix[k,i] = y3 
+      Matrix[i,k] = y3
+      
+    }
+    
+  } 
+  
+  return(Matrix)
+  
+}
+```
+
+```{r}
+Dist_Matrix = Dist_Fun2(x = Audi2[1:10,])
+Dist_Matrix
+```
+
+```{r}
+Dist_Matrix %>%
+  as.data.frame() %>%
+  mutate(Row = 1:10) %>%
+  melt(id.vars = c("Row")) %>%
+  ggplot() +
+  geom_tile(aes(x = as.factor(Row), y = as.factor(variable), fill = value), alpha = 0.6) +
+  geom_vline(xintercept = seq(0.5,10,by = 1), linetype = "dashed") +
+  geom_hline(yintercept = seq(0.5,10,by = 1), linetype = "dashed") +
+  scale_y_discrete(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  xlab("") + ylab("") + ggtitle("Euclidean") +
+  guides(fill = FALSE) +
+  theme_classic() 
+
+```
+
+- 코사인 유사도   
+
+```{r}
+CosSim2 = function(x){
+  
+  xy = x %*% t(x) 
+  x2 = sqrt(rowSums(x^2))
+  y2 = t(sqrt(rowSums(x^2)))
+  
+  Sim = xy/(x2 %*% y2)
+  
+  return(Sim)
+  
+}
+```
+
+```{r}
+Cosine_Matrix = CosSim2(x = Audi2[1:10,])
+
+Cosine_Matrix %>%
+  as.data.frame() %>%
+  mutate(Row = 1:10) %>%
+  melt(id.vars = c("Row")) %>%
+  ggplot() +
+  geom_tile(aes(x = as.factor(Row), y = as.factor(variable), fill = value), alpha = 0.6) +
+  geom_vline(xintercept = seq(0.5,10,by = 1), linetype = "dashed") +
+  geom_hline(yintercept = seq(0.5,10,by = 1), linetype = "dashed") +
+  scale_y_discrete(expand = c(0,0)) +
+  scale_x_discrete(expand = c(0,0)) +
+  xlab("") + ylab("") + ggtitle("Cosine Similarity") +
+  guides(fill = FALSE) +
+  theme_classic()
+```
+
+#### 4.1.2 계층적 군집분석   
+
+- 계층적 군집분석     
+
+```{r}
+library(cluster)
+
+# 유클리디안 거리 기준
+Cluster1 = hclust(as.dist(Dist_Matrix), method = 'ward.D')
+
+plot(Cluster1, main = "Euclidean Distance Clustering",
+     ylab = "", xlab = "", yaxt = "n")
+
+# 코사인 유사도 거리 기준
+
+Cluster2 = hclust(as.dist(Cosine_Matrix),method = "ward.D")
+
+plot(Cluster2, main = "Cosine Similarity Clustering",
+     ylab = "", xlab = "", yaxt = "n")
+```
+
+#### 4.1.3 비계층적 군집분석     
+
+- k 평균 군집분석   
+
+```{r}
+KM = kmeans(Audi2[1:100,], 3, nstart = 25)
+KM$cluster
+```
+
+```{r}
+# install.packages(“factoextra”)
+library(factoextra)
+fviz_cluster(KM, data = Audi2[1:100,]) +
+  theme_bw()
+
+```
+
+
+### 4.2 중고차 특성의 차원 축소를 위한 데이터 분석 기법   
+
+- 상관행렬 그래프  
+
+```{r}
+library(corrplot)
+Corr_mat = cor(Audi2)
+corrplot(Corr_mat, method = "color", outline = T, addgrid.col = "darkgray", 
+        order="hclust", addrect = 4, rect.col = "black", 
+        rect.lwd = 5,cl.pos = "b", tl.col = "indianred4", 
+        tl.cex = 0.5, cl.cex = 0.5, addCoef.col = "white", 
+        number.digits = 2, number.cex = 0.8, 
+        col = colorRampPalette(c("darkred","white","midnightblue"))(100))
+```
+
+- 주성분 분석  
+
+```{r}
+# install.packages("FactoMineR")
+library(FactoMineR)
+Audi3 = as.data.frame(Audi2[1:100,])
+Principal_Component = PCA(Audi3,graph = FALSE)
+Principal_Component$eig
+```
+
+```{r}
+Principal_Component$var$coord
+```
+
+```{r}
+fviz_pca_var(Principal_Component, col.var="contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+            repel = TRUE # Avoid text overlapping
+)
+fviz_pca_biplot(Principal_Component, repel = FALSE)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```

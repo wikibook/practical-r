@@ -1,0 +1,450 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="100")
+opts_chunk$set(# echo=TRUE,
+	             cache = TRUE,
+               prompt = FALSE,
+               tidy = FALSE,
+               comment = NA,
+               message = FALSE,
+               warning = FALSE,
+	             fig.align = "center",
+	             fig.height = 5,
+	             fig.width = 5)
+opts_knit$set(width=100)
+```
+
+### 5.2 데이터 전처리
+
+#### 5.2.1 데이터 및 패키지 불러오기
+
+```{r}
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(ggsci)
+
+DIR = "D:\\CSV\\UsedCar\\"
+List_Files = list.files(DIR)
+File_Length = length(List_Files)
+
+Total_Data = data.frame()
+
+for(k in 1:File_Length){
+  
+  if(!str_detect(str = List_Files[k],pattern = "unclean")){
+    
+    DF = read.csv(paste0(DIR, List_Files[k]))
+    DF$Brand = gsub(".csv","",List_Files[k])
+    
+    Total_Data = Total_Data %>%
+      bind_rows(DF)
+    
+  }
+  
+}
+
+```
+
+
+#### 5.2.2 데이터 전처리
+
+```{r}
+Total_Data$model = gsub(" ","",Total_Data$model)
+
+set.seed(1234)
+SL = sample(1:nrow(Total_Data), nrow(Total_Data) * 0.8, replace = FALSE)
+
+Total_Data_Train = Total_Data[SL,]
+Total_Data_Test = Total_Data[-SL,]
+```
+
+### 5.3 현재 시세 정보 서비스 구현   
+
+```{r}
+Total_Summary = Total_Data_Train %>%
+  group_by(Brand, model, year) %>%
+  summarise(Min_price = min(price),
+            Mean_price = mean(price),
+            Max_price = max(price))
+
+Total_Summary
+```
+
+#### 5.3.1 서비스 구현을 위한 함수 정의
+
+- 브랜드 모델명 출력   
+
+```{r}
+Model_Print = function(DF, B){
+  
+  Brand_List = unique(DF$Brand)
+  
+  if(B %in% Brand_List){
+      
+    DF2 = DF %>%
+      filter(Brand == B)
+    
+    print(unique(DF2$model))
+    
+  }else{
+    
+    print("브랜드명을 다시 입력하세요.")
+    
+  }
+  
+}
+
+Model_Print(DF = Total_Summary,
+            B = "audi")
+
+Model_Print(DF = Total_Summary,
+            B = "audi2")
+```
+- 선택 조건에 따른 통계량 추출   
+
+```{r}
+Summary_Extraction = function(DF, B, M, Y){
+  
+  Error = "N"
+  
+  Summary_DATA = DF %>%
+    filter(Brand == B) %>%
+    filter(model == M) %>%
+    filter(year == Y) 
+  
+  Summary_DATA2 = DF %>%
+    filter(Brand == B) %>%
+    filter(model == M) %>%
+    mutate(Group =  "N")
+  
+  Summary_DATA2$Group[Summary_DATA2$year == Y] = "Y"
+  
+  if(nrow(Summary_DATA) == 0){
+    
+    Error = "E"
+
+  }
+  
+  Result = list()
+  Result[['Summary_DATA']] = Summary_DATA
+  Result[['Summary_DATA2']] = Summary_DATA2
+  Result[['Error']] = Error
+  
+  return(Result)
+  
+}
+```
+
+```{r}
+Process1 = Summary_Extraction(DF = Total_Summary,
+                              	B = "audi",
+                                 M = "A1",
+                                 Y = 2019)
+
+Process1
+
+Process1_2 = Summary_Extraction(DF = Total_Summary,
+                              B = "audi",
+                              M = "A1",
+                              Y = 2021) 
+
+Process1_2
+```
+
+```{r}
+Information_Print = function(Process1){
+  
+  Error = Process1[["Error"]]
+  Summary_DATA = Process1[['Summary_DATA']]
+  Summary_DATA2 = Process1[['Summary_DATA2']]
+  
+  if(Error == "N"){
+
+    print(paste0("브랜드(모델): ",
+                 Summary_DATA$Brand,"(",Summary_DATA$model,")"))
+    print(paste0("연식: ",
+                 Summary_DATA$year))
+    print(paste0("평균시세: ",
+                 round(Summary_DATA$Mean_price,2)))
+    print(paste0("가격범위: ",
+                  Summary_DATA$Min_price,"~",Summary_DATA$Max_price))
+    
+    
+    G = ggplot(Summary_DATA2) +
+      geom_errorbarh(aes(xmin = Min_price, xmax = Max_price, y = year,
+                         col = Group),
+                     alpha = 0.8) +
+      geom_point(aes(x = Mean_price, y = year, col = Group), size = 4) +
+      scale_color_nejm() +
+      scale_y_continuous(breaks = 2000:2030) +
+      ggtitle(paste0(Summary_DATA2$Brand[1],
+                     "(model : ",Summary_DATA2$model[1],")")) + 
+      theme_bw() +
+      theme(text = element_text(face = "bold", size = 14),
+            legend.position = "bottom") +
+      xlab("중고차 시세") + ylab("연식") +
+      guides(col = FALSE)
+    
+    print(G)
+    
+  }else{
+    
+    print(paste0("브랜드(모델): ",
+                 Summary_DATA2$Brand[1],"(",Summary_DATA2$model[1],")"))
+    print("연식: 정보없음")
+    print("평균시세: 정보없음")
+    print("가격범위: 정보없음")
+    
+    G = ggplot(Summary_DATA2) +
+      geom_errorbarh(aes(xmin = Min_price, xmax = Max_price, y = year,
+                         col = Group),
+                     alpha = 0.8,height = 0.5) +
+      geom_point(aes(x = Mean_price, y = year, col = Group), size = 4) +
+      scale_color_nejm() +
+      scale_y_continuous(breaks = 2000:2030) +
+      ggtitle(paste0(Summary_DATA2$Brand[1],
+                     "(model : ",Summary_DATA2$model[1],")")) + 
+      theme_bw() +
+      theme(text = element_text(face = "bold", size = 14),
+            legend.position = "bottom") +
+      xlab("중고차 시세") + ylab("연식") +
+      guides(col = FALSE)
+    
+    print(G)
+  }
+  
+}
+```
+
+```{r}
+Information_Print(Process1 = Process1)
+```
+
+
+```{r}
+Information_Print(Process1 = Process1_2)
+```
+
+### 5.4 신규 서비스 구현  
+
+#### 5.4.1 신규 서비스 구현을 위한 함수 정의
+
+- 모델 학습     
+
+```{r}
+library(mgcv)
+
+Regression_Modeling = function(DF){
+  
+  Regression = list()
+  
+  Group1 = Total_Data %>%
+    filter(!Brand %in% c("cclass","focus"))
+
+  Group1_BRAND = unique(Group1$Brand)
+
+  for(B in 1:length(Group1_BRAND)){
+    
+    DF_Brand = Group1%>%
+      filter(Brand == Group1_BRAND[B])
+  
+    GAM = gam(log(price) ~ model + s(mileage) + mpg + engineSize + fuelType,
+              data = DF_Brand)
+  
+    Regression[[paste0(Group1_BRAND[B])]] = GAM
+      
+  }
+  
+  Group2 = Total_Data %>%
+    filter(Brand %in% c("cclass","focus")) 
+  
+  Group2_BRAND = unique(Group2$Brand)
+  
+  for(B in 1:length(Group2_BRAND)){
+    
+    DF_Brand = Group2%>%
+      filter(Brand == Group2_BRAND[B])
+
+    GAM = gam(log(price) ~ s(mileage) + engineSize + fuelType,
+              data = DF_Brand)
+  
+    Regression[[paste0(Group2_BRAND[B])]] = GAM
+    
+  }
+  
+  return(Regression)
+
+}
+```
+
+```{r}
+Regression_list = Regression_Modeling(DF = Total_Data_Train)
+
+rsq_V = c()
+
+for(S in 1:length(Regression_list)){
+  
+  sm = summary(Regression_list[[S]])
+  rsq = sm$r.sq
+  rsq_V[S] = rsq
+  
+}
+
+ggplot(NULL) +
+  geom_bar(aes(x = names(Regression_list), y = rsq_V), stat = 'identity') +
+  geom_label(aes(x = names(Regression_list), y = rsq_V, label = round(rsq_V,2))) +
+  xlab("브랜드") + ylab("R square") +
+  scale_y_continuous(breaks = seq(0,1, by = 0.1),
+                     limits = c(0,1.05), expand = c(0,0)) +
+  theme_bw() +
+  theme(text = element_text(size = 15, face = "bold")) +
+  coord_flip()
+
+```
+- 중고차 시세 예측
+
+```{r}
+Price_Prediction = function(Regression, New_DF){
+  
+  Predicted_Price = predict(Regression_list[[New_DF$Brand[1]]], newdata = New_DF)
+  Predicted_Price = exp(Predicted_Price)
+  
+  return(Predicted_Price)
+  
+}
+
+```
+
+- 신규 서비스 화면 구성   
+
+```{r}
+Information_Print2 = function(Process1, Predicted_price){
+  
+  Error = Process1[["Error"]]
+  Summary_DATA = Process1[['Summary_DATA']]
+  Summary_DATA2 = Process1[['Summary_DATA2']]
+  
+  if(Error == "N"){
+
+    print(paste0("브랜드(모델): ",
+                 Summary_DATA$Brand,"(",Summary_DATA$model,")"))
+    print(paste0("연식: ",
+                 Summary_DATA$year))
+    print(paste0("평균시세: ",
+                 round(Summary_DATA$Mean_price,2)))
+    print(paste0("가격범위: ",
+                  Summary_DATA$Min_price,"~",Summary_DATA$Max_price))
+    print(paste0("예측시세: ",
+                 round(Predicted_price,2)))
+    
+    
+    G = ggplot() +
+      geom_errorbarh(data = Summary_DATA2,
+                     aes(xmin = Min_price, xmax = Max_price, y = year,
+                         col = Group),
+                     alpha = 0.8) +
+      geom_point(data = Summary_DATA2,
+                 aes(x = Mean_price, y = year, col = Group), size = 4) +
+      geom_point(aes(x = Predicted_price, y = Summary_DATA$year), 
+			size = 4, col = "black") +
+      scale_color_nejm() +
+      scale_y_continuous(breaks = 2000:2030) +
+      ggtitle(paste0(Summary_DATA2$Brand[1],
+                     "(model : ",Summary_DATA2$model[1],")")) + 
+      theme_bw() +
+      theme(text = element_text(face = "bold", size = 14),
+            legend.position = "bottom") +
+      xlab("중고차 시세") + ylab("연식") +
+      guides(col = FALSE)
+    
+    print(G)
+    
+  }else{
+    
+    print(paste0("브랜드(모델): ",
+                 Summary_DATA2$Brand[1],"(",Summary_DATA2$model[1],")"))
+    print("연식: 정보없음")
+    print("평균시세: 정보없음")
+    print("가격범위: 정보없음")
+    print(paste0("예측시세: ",
+                 round(Predicted_price,2)))
+    
+    G = ggplot() +
+      geom_errorbarh(data = Summary_DATA2,
+                     aes(xmin = Min_price, xmax = Max_price, y = year,
+                         col = Group),
+                     alpha = 0.8,height = 0.5) +
+      geom_point(data = Summary_DATA2,
+                 aes(x = Mean_price, y = year, col = Group), size = 4) +
+      geom_point(aes(x = Predicted_price, y = Summary_DATA$year), 
+			size = 4, col = "black") +
+      scale_color_nejm() +
+      scale_y_continuous(breaks = 2000:2030) +
+      ggtitle(paste0(Summary_DATA2$Brand[1],
+                     "(model : ",Summary_DATA2$model[1],")")) + 
+      theme_bw() +
+      theme(text = element_text(face = "bold", size = 14),
+            legend.position = "bottom") +
+      xlab("중고차 시세") + ylab("연식") +
+      guides(col = FALSE)
+    
+    print(G)
+  }
+  
+}
+
+```
+
+- 개발 서비스 테스트   
+
+```{r}
+N_DF = Total_Data_Test[1,]
+N_DF$price
+```
+
+
+```{r}
+N_Process = Summary_Extraction(DF = Total_Summary,
+                              B = N_DF$Brand[1],
+                              M = N_DF$model[1],
+                              Y = N_DF$year[1])
+
+Information_Print(Process1 = N_Process)
+```
+
+### 5.5. 신규 서비스 테스트
+
+```{r}
+N_DF = Total_Data_Test[1,]
+N_DF$price
+
+N_Process = Summary_Extraction(DF = Total_Summary,
+                              B = N_DF$Brand[1],
+                              M = N_DF$model[1],
+                              Y = N_DF$year[1])
+
+Information_Print(Process1 = N_Process)
+```
+
+
+```{r}
+New_DF = N_DF
+
+Predicted = Price_Prediction(Regression = Regression_list,
+                             New_DF = N_DF)
+
+Information_Print2(Process1 = N_Process, Predicted_price = Predicted)
+```
+

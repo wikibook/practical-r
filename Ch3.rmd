@@ -1,0 +1,1315 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="100")
+opts_chunk$set(# echo=TRUE,
+	             cache = TRUE,
+               prompt = FALSE,
+               tidy = FALSE,
+               comment = NA,
+               message = FALSE,
+               warning = FALSE,
+	             fig.align = "center",
+	             fig.height = 5,
+	             fig.width = 5)
+opts_knit$set(width=100)
+```
+
+### 3.1 데이터 분석을 위한 확률과 평균 기초
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(reshape)
+
+DIR = "D:\\CSV\\UsedCar\\" 
+Audi = read.csv(paste0(DIR, "Audi.csv"),stringsAsFactors = FALSE)
+```
+
+#### 3.1.1 확률변수
+
+#### 3.1.2 확률
+
+#### 확률
+
+-   확률 -- summary()/nrow()
+
+```{r}
+summary(as.factor(Audi$transmission))/nrow(Audi)
+sum(Audi$transmission == "Automatic")/nrow(Audi)
+```
+
+-   교차표와 조건부 확률 -- xtabs()
+
+```{r}
+Table = xtabs(~Audi$fuelType + Audi$transmission)
+Table[1,1]/colSums(Table)["Automatic"]
+```
+
+-   결합 확률
+
+```{r}
+Table[1,1]/nrow(Audi)
+```
+
+-   확률의 독립
+
+```{r}
+P_Trans = sum(Audi$transmission == "Automatic")/nrow(Audi)
+P_Disel = sum(Audi$fuelType == "Diesel")/nrow(Audi)
+
+P_Trans * P_Disel
+```
+
+#### 3.2 데이터 분석을 위한 확률분포
+
+#### 3.2.1 이산형 확률분포
+
+-   이항분포
+
+```{r}
+Audi_NonHybrid = Audi %>%
+  filter(fuelType != "Hybrid")
+
+ggplot(Audi_NonHybrid) +
+  geom_bar(aes(x = fuelType, y = (..count..)/sum(..count..), 
+               fill = fuelType)) +
+  theme_bw() +
+  ylab("Perc")
+```
+
+```{r}
+P_Petrol = sum(Audi$fuelType == "Petrol")/nrow(Audi)
+P_Diesel = 1 - P_Petrol
+P_Diesel
+```
+
+-   다항분포
+
+```{r}
+ggplot(Audi) +
+  geom_bar(aes(x = fuelType, y = (..count..)/sum(..count..), 
+               fill = fuelType)) +
+  theme_bw() +
+  ylab("Perc")
+
+Probs = summary(as.factor(Audi$fuelType))/nrow(Audi)
+Probs
+```
+
+```{r}
+n_F = factorial(10)
+x_F = factorial(5) * factorial(1) * factorial(4)
+Prob = (n_F / x_F) * Probs['Diesel']^5 * Probs['Hybrid']^1 * Probs['Petrol']^4
+Prob
+```
+
+```{r}
+dmultinom(c(5,1,4),
+          prob = c(Probs['Diesel'],Probs['Hybrid'],Probs['Petrol']))
+```
+
+#### 3.2.3 연속형 확률분포
+
+-   정규분포
+
+```{r}
+library(dplyr)
+
+k1 = c()
+p1 = c()
+
+# mean = 0, sd = 3
+
+for(k in seq(-15,15,by = 0.01)){
+
+  p = dnorm(x = k,mean = 0,sd = 3)
+  k1 = c(k1,k)
+  p1 = c(p1,p)
+
+}
+
+k2 = c()
+p2 = c()
+
+# mean = 0, sd = 5
+
+for(k in seq(-15,15,by = 0.01)){
+
+  p = dnorm(x = k,mean = 0,sd = 5)
+  k2 = c(k2,k)
+  p2 = c(p2,p)
+
+}
+```
+
+```{r}
+DF = data.frame(
+  k = k1,
+  p1 = p1,
+  p2 = p2
+)
+
+
+DF %>%
+  melt(id.vars = c("k")) %>%
+  ggplot() +
+  geom_line(aes(x = k, y = value, col = as.factor(variable))) +
+  geom_vline(xintercept = 0,linetype = 'dashed') +
+  theme_bw() +
+  theme(legend.position = 'none') +
+  xlab("") + ylab("") +
+  scale_y_continuous(expand = c(0,0))
+
+```
+
+-   표준정규분포
+
+```{r}
+mean(Audi$price)
+mean(scale(Audi$price))
+```
+
+-   표본분포
+
+-   카이제곱분포
+
+```{r}
+Z1 = rnorm(n = 500,mean = 0,sd = 1)
+Z1_2 = Z1^2
+
+ggplot(NULL) +
+  geom_density(aes(x = Z1_2, y= ..density..)) +
+  xlab("") + ylab("") +
+  theme_bw() 
+```
+
+```{r}
+df_V = c()
+Z2_V = c()
+
+for(df in c(1,3,5,10)){
+
+  Z_ADD = 0
+  
+  for(iteration in 1:df){
+    
+    Z = rnorm(n = 500,mean = 0, sd = 1)
+    Z2 = Z^2
+    Z_ADD = Z_ADD + Z2
+    
+    
+  }
+  
+  Z2_V = c(Z2_V,Z_ADD)
+  df_V = c(df_V,rep(df,500))
+  
+}
+
+Chisq_DF = data.frame(
+  df = df_V,
+  Z2 = Z2_V
+)
+```
+
+```{r}
+ggplot(Chisq_DF) +
+  geom_density(aes(x = Z2, y = ..density.., fill = as.factor(df)),
+               alpha = 0.4) +
+  xlab("") + ylab("") +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(fill = "df")
+```
+
+-   F 분포
+
+```{r}
+F_Value_13 = (Chisq_DF$Z2[Chisq_DF$df == 1]/1) / (Chisq_DF$Z2[Chisq_DF$df == 3] /3)
+F_Value_101 = (Chisq_DF$Z2[Chisq_DF$df == 10]/10) / (Chisq_DF$Z2[Chisq_DF$df == 1] /1)
+
+F_DF = data.frame(
+  df = c(rep("1.3",length(F_Value_13)),
+         rep("10.1",length(F_Value_101))),
+  F_Value = c(F_Value_13,F_Value_101)
+)
+
+```
+
+```{r}
+ggplot(F_DF) +
+  geom_density(aes(x = F_Value, y = ..density.., fill = df),
+               alpha = 0.4) +
+  xlim(0,20) +
+  theme_bw() +
+  xlab("") + ylab("") +
+  theme(legend.position = "bottom")
+```
+
+-   student's t 분포
+
+```{r}
+kv = c()
+z = c()
+t = c()
+
+for(k in seq(-6,6,by = 0.01)){
+
+  n_dist = dnorm(x = k,mean = 0,sd = 1)
+  t_dist = dt(x=k, df = 3)
+  kv = c(kv,k)
+  z = c(z,n_dist)
+  t = c(t,t_dist)
+  
+}
+
+DF = data.frame(
+  k = kv,
+  Z = z,
+  t = t
+)
+
+
+DF %>%
+  melt(id.vars = c("k")) %>%
+  ggplot() +
+  geom_line(aes(x = k, y = value, col = as.factor(variable))) +
+  geom_vline(xintercept = 0,linetype = 'dashed') +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(col = "Distribution") +
+  xlab("") + ylab("") 
+
+```
+
+```{r}
+Z_Value = qnorm(p = 0.025,mean = 0, sd = 1)
+T_Value = qt(p = 0.025,df = 3)
+
+DF$Z_CV = ifelse(DF$k < Z_Value|DF$k > Z_Value * (-1),DF$Z,0)
+DF$T_CV = ifelse(DF$k < T_Value|DF$k > T_Value * (-1),DF$t,0)
+
+ggplot(DF) +
+  geom_line(aes(x = k, y = Z),col = "blue") +
+  geom_area(aes(x = k, y = Z_CV),fill = 'royalblue', alpha = 0.6) +
+  geom_line(aes(x = k, y = t),col = 'red') +
+  geom_area(aes(x = k, y = T_CV),fill = 'red', alpha = 0.6) +
+  theme_bw() + ylab("") + xlab("")
+
+```
+
+### 3.3 확률분포 함수
+
+#### 3.3.1 난수 생성
+
+-   정규분포 난수 생성 - rnorm()
+
+```{r}
+RN = rnorm(n = 100, mean = 0, sd = 1) # 난수 생성
+hist(RN)
+```
+
+-   t 분포 난수 생성 - rt()
+
+```{r}
+RT = rt(n = 100, df = 9) 
+hist(RT)
+```
+
+-   카이제곱분포 난수 생성 - rchisq()
+
+```{r}
+RCH = rchisq(n = 100, df = 9)
+hist(RCH)
+```
+
+-   F분포 난수 생성 - rf()
+
+```{r}
+RF = rf(n = 100, df1 = 2, df2 = 3)
+hist(RF)
+```
+
+#### 3.3.2 확률밀도, 누적분포, 분위수
+
+-   확률밀도 - dnorm()
+
+```{r}
+dnorm(x = 0.1, mean = 0, sd = 1)
+dt(x = 0.1, df = 9)
+```
+
+-   누적분포 - pnorm()
+
+```{r}
+pnorm(q = 0.1, mean = 0, sd = 1)
+pnorm(q = 0, mean = 0, sd = 1)
+```
+
+-   분위수 - qnorm()
+
+```{r}
+qnorm(p = 0.1, mean = 0, sd = 1) 
+qnorm(p = 0.5, mean = 0, sd = 1) 
+```
+
+### 3.4 중고차 가격 분포 확인을 위한 데이터 분포 탐색
+
+```{r}
+summary(Audi$price)
+ggplot(Audi) +
+  geom_histogram(aes(x = price), binwidth = 1000) +
+  theme_bw()
+```
+
+```{r}
+summary(Audi$price)
+```
+
+```{r}
+ggplot(Audi) +
+  geom_histogram(aes(x = price), binwidth = 1000) +
+  theme_bw()
+```
+
+#### 3.4.1 왜도와 첨도   
+
+- 왜도    
+
+```{r}
+# install.packages(“fBasics”)
+library(fBasics)
+skewness(Audi$price)
+
+```
+
+- 첨도   
+
+```{r}
+kurtosis(Audi$price)
+```
+
+#### 3.4.2 데이터 변환을 통한 분포 탐색    
+
+- 데이터 로그 변환    
+
+```{r}
+ggplot(Audi) +
+  geom_point(aes(x = price, y = log(price))) +
+  theme_bw()
+```
+
+```{r}
+ggplot(Audi) +
+  geom_histogram(aes(x = log(price)), binwidth = 0.1) +
+  theme_bw()
+```
+
+```{r}
+qqnorm(Audi$price)
+qqnorm(log(Audi$price))
+```
+
+### 3.5 중고차 가격 분석을 위한 통계적 가설 검정
+
+#### 3.5.1 귀무가설과 대립가설    
+
+- 데이터 샘플   
+
+```{r}
+set.seed(1234)
+SL = sample(1:nrow(Audi), nrow(Audi) * 0.7, replace = FALSE)
+
+Sample = Audi[SL,]
+```
+
+- 평균, 표준편차, 분위수 계산
+
+```{r}
+Mean = mean(log(Sample$price))
+Sd = sd(log(Sample$price))
+n = nrow(Sample)
+t0025 = qt(p = 0.025, df = n-1)
+t0975 = qt(p = 0.975, df = n-1)
+```
+
+- 신뢰구간 계산
+
+```{r}
+Lower = Mean + t0025 * Sd/sqrt(n)
+Lower
+
+Upper = Mean + t0975* Sd/sqrt(n)
+Upper
+
+mean(log(Audi$price))
+```
+
+#### 3.5.2 검정통계량과 임곗값
+
+- 검정통계량과 임곗값    
+
+```{r}
+mu = 9.94
+Tvalue = (Mean - mu)/(Sd/sqrt(n)) 
+Tvalue
+
+Critical_Value = qt(p = 0.025, df = n-1)
+Critical_Value
+```
+
+- 유의확률과 유의수준   
+
+```{r}
+Pvalue = pt(q = Tvalue, df = n-1) * 2
+Pvalue
+
+Significant_Value = pt(q = Critical_Value, df = n-1) * 2
+Significant_Value
+```
+
+### 3.6 중고차 특성 분석을 위한 평균 분석
+
+#### 3.6.1 일표본 t 검정
+
+```{r}
+t.test(log(Sample$price),mu = 9.94)
+```
+
+#### 3.6.2 독립표본 t 검정    
+
+- 두 집단의 등분산 검정    
+
+```{r}
+# install.packages("car")
+library(car)
+Audi_NonHybrid$fuelType = factor(Audi_NonHybrid$fuelType,
+                                 levels = c("Petrol","Diesel"))
+leveneTest(log(Audi_NonHybrid$price) ~ Audi_NonHybrid$fuelType)
+```
+
+- 독립 표본 t 검정    
+
+```{r}
+t.test(log(Audi_NonHybrid$price) ~ Audi_NonHybrid$fuelType ,
+       var.equal = FALSE)
+```
+
+#### 3.6.3 분산분석   
+
+- 분산분석   
+
+```{r}
+ANOVA = aov(log(Audi$price) ~ Audi$fuelType)
+summary(ANOVA)
+```
+
+```{r}
+# install.packages(“ggpubr”)
+library(ggpubr)
+my_comparisons = list(c("Petrol","Hybrid"),
+                      c("Petrol","Diesel"),
+                      c("Diesel","Hybrid"))
+
+Audi %>%
+  mutate(log_price = log(price)) %>%
+  ggboxplot(x = "fuelType", y = "log_price",
+            bxp.errorbar =  TRUE, color = "fuelType", palette = "jco",
+            fill = "fuelType") +
+  stat_boxplot(geom = "errorbar",
+               aes(x = fuelType, y = log_price)) +
+  stat_compare_means(comparisons = my_comparisons)
+
+```
+
+- 이원배치 분산분석
+
+```{r}
+ANOVA2 = aov(log(Audi$price) ~ Audi$fuelType * Audi$transmission)
+summary(ANOVA2)
+
+```
+
+```{r}
+Audi %>%
+  group_by(fuelType, transmission) %>%
+  summarise(Mean = mean(log(price))) %>%
+  ggplot() +
+  geom_point(aes(x = fuelType, y = Mean, col = transmission,
+                 shape = transmission, size = Mean), alpha = 0.4) +
+  geom_line(aes(x = fuelType, y = Mean, col = transmission, group = transmission),
+            size = 1.2) +
+  scale_size_area(max_size = 8) +
+  guides(size = FALSE) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+### 3.7 중고차 가격에 및미는 영향 파악을 위한 관계 분석    
+
+#### 3.7.1 상관분석 
+
+- 상관분석   
+
+```{r}
+Audi %>%
+  sample_n(size = 1000, replace = FALSE) %>%
+  ggplot() +
+  geom_point(aes(x = mileage, y = price)) +
+  geom_smooth(aes(x = mileage, y = price)) +
+  theme_bw()
+
+cor(Audi$mileage, Audi$price)
+
+cor(Audi$mileage, log(Audi$price))
+```
+
+#### 3.7.2 회귀분석   
+
+- 회귀분석   
+
+```{r}
+set.seed(1234)
+SL = sample(1:nrow(Audi), nrow(Audi) * 0.7, replace = FALSE)
+
+Sample = Audi[SL,]
+
+Reg1 = lm(price ~ mileage, data = Sample)
+
+summary(Reg1)
+```
+- 잔차의 정규성
+
+```{r}
+ggplot(NULL) +
+  geom_histogram(aes(x = Reg1$residuals), bins = 100) +
+  theme_bw() +
+  xlab("Residuals")
+```
+
+- 잔차의 등분산성   
+
+```{r}
+ggplot(NULL) +
+  geom_point(aes(x = Reg1$fitted.values, y = Reg1$residuals),
+             alpha = 0.4, col = "grey20") +
+  geom_smooth(aes(x = Reg1$fitted.values, y = Reg1$residuals)) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "red",alpha = 0.8) +
+  theme_bw()
+```
+
+- 잔차의 독립성   
+
+```{r}
+ggplot(NULL) +
+  geom_point(aes(x = 1:length(Reg1$residuals), y = Reg1$residuals),
+             alpha = 0.4, col = "grey20") +
+  geom_hline(aes(yintercept = mean(Reg1$residuals)), 
+             linetype = "dashed", col = "red",alpha = 0.8) +
+  theme_bw()
+ 
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(Reg1)
+```
+
+#### 3.7.3 회귀분석 성능 개선 방법
+
+- 데이터 변환을 통한 성능 개선   
+
+```{r}
+# 로그변환 후 회귀분석
+
+Reg2 = lm(log(price) ~ mileage, data = Sample)
+summary(Reg2)
+```
+
+```{r}
+ggplot(NULL) +
+  geom_histogram(aes(x = Reg2$residuals), bins = 100) +
+  theme_bw() +
+  xlab("Residuals")
+```
+
+```{r}
+ggplot(NULL) +
+  geom_point(aes(x = Reg2$fitted.values, y = Reg2$residuals),
+             alpha = 0.4, col = "grey20") +
+  geom_smooth(aes(x = Reg2$fitted.values, y = Reg2$residuals)) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "red",alpha = 0.8) +
+  theme_bw()
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(Reg2)
+```
+
+- 영향점 분석을 통한 성능 개선  
+
+```{r}
+Index = c(9691, 10553, 10589)
+Sample$Outlier = 0
+Sample$Outlier[rownames(Sample) %in% Index] = 1
+
+ggplot(Sample) +
+  geom_point(aes(x = mileage, y = log(price), 
+                 col = as.factor(Outlier)),
+             alpha = 0.8) +
+  geom_smooth(aes(x = mileage, y = log(price)),
+              method = 'lm') + 
+  labs(col = "Outlier") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+Sample2 = Sample[!rownames(Sample) %in% Index,]
+Reg2_2 = lm(log(price) ~ mileage, data = Sample2)
+summary(Reg2_2)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(Reg2_2)
+```
+
+#### 3.7.4 회귀분석을 활용한 예측   
+
+- 모형을 활용한 예측   
+
+```{r}
+TEST = Audi[-SL,]
+Predicted = predict(Reg2_2, newdata = TEST)
+MSE = mean((log(TEST$price) - Predicted)^2)
+MSE
+```
+
+```{r}
+TEST_DF = data.frame(
+  log_price = log(TEST$price),
+  Predicted = Predicted,
+  Col = ifelse(log(TEST$price) > Predicted,"+","-")
+)
+
+ggplot(TEST_DF) +
+  geom_point(aes(x = log_price, y = Predicted,col = Col)) +
+  geom_abline(slope = 1, intercept = 0) + 
+  scale_x_continuous(limits = c(5,12)) +
+  scale_y_continuous(limits = c(5,11)) +
+  guides(col = FALSE) +
+  theme_bw()
+
+```
+
+- 선형 모형의 문제점
+
+```{r}
+New_DF = data.frame(
+  mileage = seq(0,1000000,by = 100000)
+  )
+
+Predicted = predict(Reg2, newdata = New_DF)
+
+New_DF$Predicted = Predicted
+
+New_DF$Predicted_G = ifelse(New_DF$Predicted > 0,"Plus","Minus")
+
+ggplot(New_DF) +
+  geom_point(aes(x = mileage, y = Predicted, col = Predicted_G), size = 3) +
+  geom_text(aes(x = mileage, y = Predicted + 0.4, label = round(Predicted,2))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Mileage") + ylab("Predicted_Price") +
+  scale_y_continuous(breaks = seq(-2,10,by = 2)) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+
+#### 3.7.5 예측 성능 개선을 위한 비선형 모형   
+
+- 다항 회귀분석 
+
+```{r}
+Reg3 = lm(log(price) ~ poly(mileage,2), data = Sample)
+summary(Reg3)
+```
+
+```{r}
+Predicted2 = predict(Reg3, newdata = TEST)
+MSE2 = mean((log(TEST$price) - Predicted2)^2)
+MSE2
+```
+
+```{r}
+TEST_DF2 = data.frame(
+  log_price = log(TEST$price),
+  Predicted = Predicted2,
+  Col = ifelse(log(TEST$price) > Predicted2,"+","-")
+)
+
+ggplot(TEST_DF2) +
+  geom_point(aes(x = log_price, y = Predicted,col = Col)) +
+  geom_abline(slope = 1, intercept = 0) + 
+  scale_x_continuous(limits = c(5,12)) +
+  scale_y_continuous(limits = c(5,11)) +
+  guides(col = FALSE) +
+  theme_bw()
+
+```
+
+```{r}
+Predicted2 = predict(Reg3, newdata = New_DF)
+
+New_DF$Predicted2 = Predicted2
+New_DF$Predicted_G2 = ifelse(New_DF$Predicted2 > 0,"Plus","Minus")
+
+ggplot(New_DF) +
+  geom_point(aes(x = mileage, y = Predicted2, col = Predicted_G2), size = 3) +
+  geom_text(aes(x = mileage, y = Predicted2 + 1, label = round(Predicted2,2))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_line(aes(x = mileage, y = Predicted2), 
+            group = 1, linetype = 'dashed') +
+  xlab("Mileage") + ylab("Predicted_Price") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+- 일반화 가법모형 - gam()   
+
+```{r}
+library(mgcv)
+
+GAM = gam(log(price) ~ s(mileage), data = Sample)
+summary(GAM)
+
+```
+
+```{r}
+# install.packages(“mgcv”)
+library(mgcv)
+
+GAM = gam(log(price) ~ s(mileage), data = Sample)
+summary(GAM)
+
+```
+
+```{r}
+Predicted3 = predict(GAM, newdata = TEST)
+MSE3 = mean((log(TEST$price) - Predicted3)^2)
+MSE3
+
+```
+
+```{r}
+TEST_DF3 = data.frame(
+  log_price = log(TEST$price),
+  Predicted = Predicted3,
+  Col = ifelse(log(TEST$price) > Predicted3,"+","-")
+)
+
+
+ggplot(TEST_DF3) +
+  geom_point(aes(x = log_price, y = Predicted,col = Col)) +
+  geom_abline(slope = 1, intercept = 0) + 
+  scale_x_continuous(limits = c(5,12)) +
+  scale_y_continuous(limits = c(5,11)) +
+  guides(col = FALSE) +
+  theme_bw()
+ 
+
+```
+
+```{r}
+Predicted3 = predict(GAM, newdata = New_DF)
+
+New_DF$Predicted3 = Predicted3
+New_DF$Predicted_G3 = ifelse(New_DF$Predicted3 > 0,"Plus","Minus")
+
+ggplot(New_DF) +
+  geom_point(aes(x = mileage, y = Predicted3, col = Predicted_G3), size = 3) +
+  geom_text(aes(x = mileage, y = Predicted3 + 0.3, label = round(Predicted3,2))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_line(aes(x = mileage, y = Predicted3), 
+            group = 1, linetype = 'dashed') +
+  xlab("Mileage") + ylab("Predicted_Price") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+
+- 분석 방법 비교   
+
+```{r}
+New_DF %>%
+  select(mileage, Predicted, Predicted2, Predicted3) %>%
+  reshape::rename(c("Predicted" = "Linear",
+                    "Predicted2" = "Polynomial",
+                    "Predicted3" = "GAM")) %>%
+  melt(id.vars = c("mileage")) %>%
+  ggplot() +
+  geom_point(aes(x = mileage, y = value, col = variable)) +
+  geom_line(aes(x = mileage, y = value, col = variable, group = variable)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(col = "") +
+  theme_bw() +
+  theme(legend.position = c(0.2,0.8))
+```
+
+### 3.8 중고차 판매 가격 예측을 위한 분석   
+
+#### 3.8.1 범주형 변수를 활용한 예측 분석   
+
+- 가변수를 활용한 회귀분석   
+
+```{r}
+D_Reg = lm(log(price) ~ mileage + fuelType, data = Sample)
+summary(D_Reg)
+```
+
+```{r}
+New_DF2 = data.frame(
+  mileage = rep(seq(0,1000000,by = 100000),3),
+  fuelType = rep(c("Hybrid","Petrol","Diesel"),c(11,11,11))
+)
+
+
+Predicted1 = predict(D_Reg, newdata = New_DF2)
+New_DF2$Predicted1 = Predicted1
+
+ggplot(New_DF2) +
+  geom_point(aes(x = mileage, y = Predicted1, col = fuelType)) +
+  geom_line(aes(x = mileage, y = Predicted1, 
+                col = fuelType, group = fuelType)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  ylab("Predicted price") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+- 가변수를 활용한 일반화 가법모형   
+
+```{r}
+D_GAM = gam(log(price) ~ s(mileage) + fuelType, data = Sample)
+summary(D_GAM)
+```
+
+```{r}
+Predicted2 = predict(D_GAM, newdata = New_DF2)
+New_DF2$Predicted2 = Predicted2
+New_DF2 %>%
+  rename(c("Predicted1" = "Linear",
+           "Predicted2" = "GAM")) %>%
+  melt(id.vars = c("mileage", "fuelType")) %>%
+  ggplot() +
+  geom_point(aes(x = mileage, y = value, col = fuelType)) +
+  geom_line(aes(x = mileage, y = value, col = fuelType, linetype = variable)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  ylab("Predicted price") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+
+#### 3.8.2 다중 회귀분석을 활용한 예측 분석
+
+```{r}
+Full_Model = lm(log(price) ~ mileage + mpg + engineSize + fuelType,
+                data = Sample)
+
+summary(Full_Model)
+```
+
+- 다중공선성   
+
+```{r}
+vif(Full_Model)
+```
+
+- 다중 일반화 가법모형  
+
+```{r}
+Full_GAM = gam(log(price) ~ s(mileage) + s(mpg) + engineSize + fuelType,
+                data = Sample)
+
+summary(Full_GAM)
+
+```
+
+#### 3.8.3 예측 모형의 성능 평가   
+
+- MSE 계산   
+
+```{r}
+Reg2_P = predict(Reg2, newdata = TEST)
+Reg3_P = predict(Reg3, newdata = TEST)
+GAM_P = predict(GAM, newdata = TEST)
+D_Reg_P = predict(D_Reg, newdata = TEST)
+D_GAM_P = predict(D_GAM, newdata = TEST)
+Full_Model_P = predict(Full_Model, newdata = TEST)
+Full_GAM_P = predict(Full_GAM, newdata = TEST)
+```
+
+```{r}
+Reg2_MSE = mean((Reg2_P - log(TEST$price))^2)
+Reg3_MSE = mean((Reg3_P - log(TEST$price))^2)
+GAM_MSE = mean((GAM_P - log(TEST$price))^2)
+D_Reg_MSE = mean((D_Reg_P - log(TEST$price))^2)
+D_GAM_MSE = mean((D_GAM_P - log(TEST$price))^2)
+Full_Model_MSE = mean((Full_Model_P - log(TEST$price))^2)
+Full_GAM_MSE = mean((Full_GAM_P - log(TEST$price))^2)
+```
+
+```{r}
+Result = data.frame(
+  Model = c("Linear","Polynomial","GAM",
+            "Dummy_Linear","Dummy_GAM",
+            "Full_Linear","Full_GAM"),
+  Value = c(Reg2_MSE, Reg3_MSE, GAM_MSE, 
+            D_Reg_MSE,D_GAM_MSE,Full_Model_MSE,Full_GAM_MSE)
+)
+```
+
+```{r}
+ggplot(Result) +
+  geom_bar(aes(x = reorder(Model,Value), y = Value, fill = Model), 
+           stat = 'identity', alpha = 0.8) +
+  guides(fill = FALSE) +
+  ylab("MSE") + xlab("") +
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "bottom") 
+```
+
+- k-fold 교차검증법   
+
+```{r}
+set.seed(1234)
+ID = sample(rep(seq(5), length = nrow(Audi)))
+```
+
+```{r}
+Matrix = matrix(data = 0, nrow = 5, ncol = 7)
+
+for(k in 1:5){
+  
+  TEST = Audi[ID == k,]
+  TRAIN = Audi[ID != k,]
+  
+  Linear = lm(log(price) ~ mileage, data = TRAIN)
+  Poly = lm(log(price) ~ poly(mileage,2), data = TRAIN)
+  GAM = gam(log(price) ~ s(mileage), data = TRAIN)
+  D_Reg = lm(log(price) ~ mileage + fuelType, data = TRAIN)
+  D_GAM = gam(log(price) ~ s(mileage) + fuelType, data = TRAIN)
+  Full_Model = lm(log(price) ~ mileage + mpg + engineSize + fuelType,
+                  data = TRAIN)
+  Full_GAM = gam(log(price) ~ s(mileage) + s(mpg) + engineSize + fuelType,
+                  data = TRAIN)
+  
+  Linear_P  =  predict(Linear, newdata = TEST)
+  Poly_P = predict(Poly, newdata = TEST)
+  GAM_P = predict(GAM, newdata = TEST)
+  D_Reg_P = predict(D_Reg, newdata = TEST)
+  D_GAM_P = predict(D_GAM, newdata = TEST)
+  Full_Model_P = predict(Full_Model, newdata = TEST)
+  Full_GAM_P = predict(Full_GAM, newdata = TEST)
+  
+  Linear_MSE = mean((Linear_P - log(TEST$price))^2)
+  Poly_MSE = mean((Poly_P - log(TEST$price))^2)
+  GAM_MSE = mean((GAM_P - log(TEST$price))^2)
+  D_Reg_MSE = mean((D_Reg_P - log(TEST$price))^2)
+  D_GAM_MSE = mean((D_GAM_P - log(TEST$price))^2)
+  Full_Model_MSE = mean((Full_Model_P - log(TEST$price))^2)
+  Full_GAM_MSE = mean((Full_GAM_P - log(TEST$price))^2)
+  
+  Matrix[k,1:7] = c(Linear_MSE, Poly_MSE, GAM_MSE, D_Reg_MSE,
+                    D_GAM_MSE, Full_Model_MSE, Full_GAM_MSE)
+  
+}
+
+Matrix = as.data.frame(Matrix)
+
+colnames(Matrix) = c("Linear","Polynomial","GAM",
+                     "Dummy_Linear","Dummy_GAM",
+                     "Full_Linear","Full_GAM")
+
+Matrix
+```
+
+```{r}
+Matrix %>%
+  melt() %>%
+  ggplot() +
+  geom_boxplot(aes(x = variable, y = value, fill = variable), 
+               alpha = 0.6) +
+  xlab("Model") + ylab("MSE") +
+  guides(fill = FALSE) +
+  theme_bw() +
+  coord_flip()
+```
+
+### 3.9 중고차 등급 분석을 위한 분류 모형   
+
+#### 3.9.1 로지스틱 회귀분석   
+
+```{r}
+Q3 = quantile(Audi$price, probs = c(0.75))
+Audi$price_G = ifelse(Audi$price > Q3, 1, 0)
+Sample = Audi[SL,]
+Test = Audi[-SL,]
+```
+
+- 로지스틱 회귀분석의 접근 방식   
+
+```{r}
+ggplot(Sample) +
+  geom_point(aes(x = mileage, y = price_G, col = as.factor(price_G))) +
+  geom_abline(mapping=aes(slope = 1/150000,intercept = 1),
+              linetype = "dashed", size = 1.2) +
+  scale_x_reverse(limits = c(150000,0)) +
+  guides(col = FALSE) +
+  theme_bw()
+```
+
+- 로지스틱 회귀분석 - glm()
+
+```{r}
+GLM = glm(price_G ~ mileage, data = Sample, 
+          family = binomial(link = "logit"))
+Predicted = GLM$fitted.values
+```
+
+```{r}
+Sample$GLM_Predicted = Predicted
+
+ggplot(Sample) +
+  geom_point(aes(x = mileage, y = price_G, col = as.factor(price_G))) +
+  geom_line(aes(x = mileage, y = GLM_Predicted), size = 1.2, linetype = 'dashed') +
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  scale_x_reverse(limits = c(150000,0)) +
+  guides(col = FALSE) +
+  theme_bw()
+
+summary(GLM)
+```
+
+```{r}
+ggplot(Sample) +
+  geom_point(aes(x = mileage, 
+                 y = predict(GLM, newdata = Sample)),
+             size = 1.2) +
+  scale_x_reverse(limits = c(150000,0)) +
+  ylab("log(p(x)/1-p(x))") +
+  guides(col = FALSE) +
+  theme_bw()
+```
+
+- 이탈도   
+
+```{r}
+anova(GLM, test="Chisq")
+```
+
+- 로지스틱 회귀분석의 평가 방법   
+
+```{r}
+#install.packages("e1071")
+library(caret)
+
+log_odds = predict(GLM, newdata = Test)
+Predicted = predict(GLM, newdata = Test, type = 'response')
+
+Predicted_C = ifelse(Predicted > 0.5, 1, 0)
+```
+
+```{r}
+confusionMatrix(factor(Predicted_C, levels = c(1,0)),
+                factor(Test$price_G, levels = c(1,0)))
+```
+
+```{r}
+library(Epi)
+ROC(form = price_G ~ mileage, data = Test,plot="ROC")
+```
+
+#### 3.9.3 다중 로지스틱 회귀분석  
+
+```{r}
+GLM2 = glm(price_G ~ mileage + mpg + engineSize, data = Sample, 
+           family = binomial(link = "logit"))
+
+summary(GLM2)
+
+```
+
+```{r}
+Predicted2 = predict(GLM2, newdata = Test, type = 'response')
+
+Predicted_C2 = ifelse(Predicted2 > 0.5, 1, 0)
+
+confusionMatrix(factor(Predicted_C2, levels = c(1,0)),
+                factor(Test$price_G, levels = c(1,0)))
+
+```
+
+### 3.10 중고차 등급 분석을 위한 머신러닝 기초   
+
+#### 3.10.1 의사결정나무   
+
+- 엔트로피 모델    
+
+```{r}
+DF = data.frame(
+  TEXT = rep(c("A","B"),c(9,3)),
+  x = rep(1:4,3),
+  y = rep(1:3, each = 4)
+)
+
+H = 0
+
+for(k in unique(DF$TEXT)){
+  
+  Prob = sum(DF$TEXT == k)/ nrow(DF) 
+  Value = Prob * log2(Prob)
+  H = H + Value
+  
+}
+
+H = H * (-1)
+print(H)
+```
+
+```{r}
+DF = data.frame(
+  TEXT = rep(c("A","B","C","D"),c(3,3,1,5)),
+  x = rep(1:4,3),
+  y = rep(1:3, each = 4)
+)
+
+H = 0
+
+for(k in unique(DF$TEXT)){
+  
+  Prob = sum(DF$TEXT == k)/ nrow(DF) 
+  Value = Prob * log2(Prob)
+  H = H + Value
+  
+}
+
+H = H * (-1)
+print(H)
+```
+
+- 정보획득  
+
+```{r}
+Entropy_Function = function(DF){
+  
+  H = 0
+
+  for(k in unique(DF$TEXT)){
+    
+    Prob = sum(DF$TEXT == k)/ nrow(DF) 
+    Value = Prob * log2(Prob)
+    H = H + Value
+    
+  }
+  
+  H = H * (-1)
+  print(H)
+  return(H)
+  
+}
+```
+
+```{r}
+DF_AC = DF %>%
+  dplyr::filter(TEXT %in% c("A","C"))
+
+DF_BD = DF %>%
+  dplyr::filter(TEXT %in% c("B","D"))
+
+H = Entropy_Function(DF = DF)
+```
+
+```{r}
+H_AC = Entropy_Function(DF = DF_AC)
+H_BD = Entropy_Function(DF = DF_BD)
+IG = H - (4/12)*H_AC - (8/12)*H_BD
+IG
+```
+
+- C5.0 의사결정나무   
+
+```{r}
+# install.packages(“C50”)
+library(C50)
+
+Sample$price_G = as.factor(Sample$price_G)
+FEATURE = Sample[,c("mileage","mpg","engineSize")]
+RESPONSE = Sample[,c("price_G")]
+
+
+tree1 = C5.0(FEATURE, RESPONSE, control = C5.0Control(noGlobalPruning = FALSE, 
+    minCases = 150), trials = 10)
+
+summary(tree1)
+```
+
+```{r}
+plot(tree1)
+```
+
+```{r}
+tree2 = C5.0(FEATURE, RESPONSE, control = C5.0Control(noGlobalPruning = FALSE, 
+    minCases = 400), trials = 10)
+
+plot(tree2)
+```
+
+```{r}
+tree_pred1 = predict(tree1, newdata = Test)
+
+confusionMatrix(factor(tree_pred1,levels = c(1,0)), 
+                factor(Test$price_G, levels = c(1,0)))
+
+```
+
+```{r}
+tree_pred2 = predict(tree2, newdata = Test)
+
+confusionMatrix(factor(tree_pred2,levels = c(1,0)), 
+                factor(Test$price_G, levels = c(1,0)))
+
+```
+
+#### 3.10.2 랜덤 포레스트   
+
+```{r}
+# install.packages(“randomForest”)
+library(randomForest)
+
+rf.fit = randomForest(price_G ~ mileage + mpg + engineSize, 
+                      data = Sample, mtry = 2, ntree = 50)
+
+y_pred = predict(rf.fit, newdata = Test)
+
+confusionMatrix(factor(y_pred,levels = c(1,0)), 
+                factor(Test$price_G, levels = c(1,0)))
+
+```
+
+```{r}
+plot(rf.fit$err.rate[, 1], col = "red")
+```

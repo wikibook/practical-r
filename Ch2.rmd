@@ -1,0 +1,1430 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="100")
+opts_chunk$set(# echo=TRUE,
+	             cache = TRUE,
+               prompt = FALSE,
+               tidy = FALSE,
+               comment = NA,
+               message = FALSE,
+               warning = TRUE,
+	             fig.align = "center",
+	             fig.height = 5,
+	             fig.width = 5)
+opts_knit$set(width=100)
+```
+
+### 2.3 R 1차원 데이터 다루기
+
+#### 2.3.1 1차원 벡터 다루기
+
+-   벡터 생성 - c()
+
+```{r}
+V1 = c(1,2,3,4,5)
+V1  
+
+
+```
+
+-   수치형 벡터 생성
+
+```{r}
+V2 = 1:5
+V2
+
+```
+
+-   문자열 벡터 생성
+
+```{r}
+V3 = c("A","B","C","D")
+V3
+
+```
+
+-   반복 벡터 생성 - rep()
+
+```{r}
+# 하나의 숫자를 n번 반복하는 경우
+V4 = rep(1,5)
+V4
+
+# 벡터를 n번 반복하는 경우
+V5 = rep(c(1,5),5)
+V5
+
+V6 = rep(c(1,5),c(2,3))
+V6
+
+```
+
+-   수치형 벡터 생성 - seq()
+
+```{r}
+# 수치형 수열 벡터 생성
+V7 = seq(1,10,by = 2)
+V7
+
+V8 = seq(1,10,length.out = 5)
+V8
+
+# 날짜형 수열 벡터 생성
+V9 = seq(as.Date("2019-01-01"),
+         as.Date("2019-01-10"),
+         by = 1)
+V9
+```
+
+#### 2.3.2 1차원 벡터 변수 특성 다루기
+
+-   변수 특성 확인 - str()
+
+```{r}
+str(V1)
+str(V3)
+str(V9)
+```
+
+-   변수 특성 변환 - as()
+
+```{r}
+V1_2 = as.factor(V1)
+V1_2
+str(V1_2)
+
+V1_3 = as.character(V1)
+V1_3
+str(V1_3)
+
+V3_2 = as.numeric(V3)  
+V3_2
+```
+
+#### 2.3.3 문자열 다루기
+
+```{r}
+T1 = "A B C D E"
+substr(x = T1,start = 1,stop = 4)
+```
+
+-   문자열 붙이기 - paste()
+
+```{r}
+paste0(T1,"EFG")
+paste(T1,"EFG")
+paste(T1,"EFG",sep = "-")
+```
+
+-   문자열 대체 - gsub()
+
+```{r}
+gsub(x = T1, pattern = "A",replacement = 3)
+```
+
+-   문자열 분리 - strsplit()
+
+```{r}
+strsplit(T1, " ")
+strsplit(T1, " ")[[1]][3]
+```
+
+-   날짜 변수 다루기
+
+```{r}
+DAY = as.factor(format(V9,"%a"))
+summary(DAY)
+
+DAY = factor(DAY, levels = c("일","월","화","수",
+                             "목","금","토"))
+summary(DAY)
+```
+
+#### 2.3.4 1차원 벡터 인덱싱
+
+```{r}
+V3[1]
+V3[3]
+V3[c(1,3)]
+V3[-2]
+V3[c(-2,-4)]
+```
+
+-   1차원 벡터의 원소 이름 설정 - names()
+
+```{r}
+names(V3) = c("A1","A2","A3","A4")
+V3
+
+V3["A1"]
+```
+
+#### 2.3.5 1차원 벡터의 연산
+
+```{r}
+V1 + 1
+V1 * 2
+V1 + c(1,2,3,4,5)
+V1 + c(1,2,3)  
+```
+
+#### 2.3.6 1차원 벡터 샘플링
+
+```{r}
+sample(x = 1:6,
+       size = 3,
+       replace = FALSE)
+
+sample(x = 1:6,
+       size = 6,
+       replace = TRUE)
+```
+
+-   고정난수 생성 - set.seed()
+
+```{r}
+set.seed(123)
+
+sample(x = 1:45,
+       size = 6,
+       replace = FALSE)
+```
+
+### 2.4 R 행렬, 데이터프레임 다루기
+
+#### 2.4.1 행렬 생성
+
+-   행렬 생성 함수 - matrix()
+
+```{r}
+M1 = matrix(data = 0,
+             nrow = 2,
+             ncol = 3)
+
+M1
+
+M2 = matrix(data = 1:20,
+            nrow = 4,
+            byrow = TRUE)
+
+M2
+
+M3 = matrix(data = 1:20,
+            nrow = 4,
+            byrow = FALSE)
+
+M3
+```
+
+#### 2.4.2 행렬 인덱싱
+
+-   행, 열 인덱싱
+
+```{r}
+M2[2,3]
+M2[2,]
+M2[,3]
+```
+
+-   다중 행, 열 인덱싱
+
+```{r}
+M2[,c(1,3)]
+M2[,-2]
+```
+
+#### 2.4.3 행렬의 연산
+
+-   행렬의 덧셈과 뺄셈
+
+```{r}
+M4 = M2 + M3
+M4
+
+M5 = M2 - M3
+M5
+
+M6 = M2 + 2
+M6
+
+M7 = M2 * 4
+M7
+```
+
+- 행렬과 벡터 연산
+
+```{r}
+M2 * c(1,2)
+M2 * c(1,2,3)
+```
+
+-   행렬의 곱셈
+
+```{r}
+M8 = matrix(data = 1:6,
+            nrow = 2)
+
+M9 = matrix(data = 10:15,
+            ncol = 2)
+
+M10 = M8 %*% M9
+
+M10
+```
+
+#### 2.4.4 데이터프레임 생성
+
+```{r}
+DF1 = data.frame(
+  V1 = 1:3,
+  V2 = c("A","B","C"),
+  V3 = seq(4,6,length.out = 3),
+  V4 = rep(Sys.Date(),3)
+)
+
+DF1
+```
+
+```{r}
+str(DF1)
+dim(DF1)
+nrow(DF1)
+ncol(DF1)
+```
+
+#### 2.4.5 데이터 행/열의 이름 변경, 인덱싱
+
+-   행, 열 이름 출력 - rownames(), colnames()
+
+```{R}
+rownames(DF1)
+colnames(DF1)
+```
+
+-   행 열의 이름을 변경
+
+```{r}
+rownames(DF1) = c("A","B","C")
+colnames(DF1) = c("Number","Alphabet","Number2","DATE")
+DF1
+```
+
+-   특정 열의 인덱스 탐색 - grep()
+
+```{r}
+grep("DATE",colnames(DF1))
+```
+
+#### 2.4.6 데이터프레임 변수 추가 및 변경
+
+-   변수 추가하기
+
+```{r}
+DF1$Alphabet2 = c("D","E","F")
+DF1$DATE2 = format(DF1$DATE, "%A")
+DF1
+```
+
+-   변수 특성 변환하기
+
+```{r}
+str(DF1$DATE2)
+summary(DF1$DATE2)
+
+DF1$DATE2 = as.factor(DF1$DATE2)
+summary(DF1$DATE2)
+```
+
+#### 2.4.7 데이터프레임 병합
+
+-   데이터프레임 생성
+
+```{r}
+DF2 = data.frame(
+    A = c(1,2,3),
+    B = c(4,5,6)
+)
+
+DF2
+
+DF3 = data.frame(
+  A = c(5,4,1),
+  B = c(3,2,1)
+)
+
+DF3
+
+rbind(DF2,DF3)
+```
+
+-   열 기준 병합 - cbind()
+
+```{r}
+#데이터프레임 생성
+DF4 = data.frame(
+  A = c(1,2,3),
+  B = c(4,5,6)
+)
+
+DF4
+
+DF5 = data.frame(
+  C = c(4,5,6),
+  D = c(7,8,9)
+)
+
+DF5
+
+cbind(DF4,DF5)
+```
+
+-   key 기준 병합 - merge()
+
+```{r}
+DF6 = data.frame(
+  Key = c("A","B","C","D","E"),
+  A = c(1,2,3,4,5)
+)
+
+DF6
+
+DF7 = data.frame(
+  Key = c("C","D","E","F","G"),
+  B = c(4,1,2,3,4)
+)
+
+DF7
+
+# all = TRUE
+
+DF8 = merge(DF6, DF7, by = "Key",
+            all = TRUE)
+
+DF8
+
+# all.x = TRUE
+
+DF9 = merge(DF6, DF7, by = "Key",
+            all.x = TRUE)
+
+DF9
+
+# all.y = TRUE
+
+DF10 = merge(DF6, DF7, by = "Key",
+            all.y = TRUE)
+
+DF10
+```
+
+-   key 변수 이름이 다른 경우
+
+```{r}
+DF11 = data.frame(
+  Key.x = c("A","B","C","D","E"),
+  A = c(1,2,3,4,5)
+)
+
+DF11
+
+DF12 = data.frame(
+  Key.y = c("C","D","E","F","G"),
+  B = c(4,1,2,3,4)
+)
+
+DF13 = merge(DF11, DF12,
+             by.x = "Key.x", by.y = "Key.y")
+
+DF13
+```
+
+### 2.5 R 리스트 데이터 다루기
+
+#### 2.5.1 리스트 데이터 생성 및 인덱싱 - list()
+
+```{r}
+# 리스트 생성
+List1 = list()
+V1 = 1:10
+D1 = data.frame(
+  A = 1:5,
+  B = 6:10
+)
+
+List1[["Vector"]] = V1
+List1[["DataFrame"]] = D1
+
+List1
+```
+
+### 2.6 R 데이터 불러오기 및 저장
+
+#### 2.6.1 데이터 불러오기
+
+```{r}
+# csv 파일 불러오기
+read.csv("D:\\Dropbox\\CSV\\Sample_DF.csv")
+
+# 탭으로 구분된 txt 파일 불러오기
+read.delim("D:\\Dropbox\\CSV\\TXT_Sample.txt")
+
+# 문자열로 구성된 txt 파일 불러오기
+readLines("D:\\Dropbox\\CSV\\TXTLines.txt", encoding = "UTF-8")
+```
+
+#### 2.6.2 데이터 저장하기
+
+-   csv 파일 저장하기
+
+```{r}
+# csv 파일 저장하기 
+write.csv(DF1,
+           "D:\\Dropbox\\CSV\\DF1.csv")
+
+write.csv(DF1,
+          "D:\\Dropbox\\CSV\\DF1_2.csv",
+          row.names = FALSE)
+```
+
+-   RData 저장하기
+
+```{r}
+save(DF1, 
+     file = "D:\\Dropbox\\CSV\\DF1.RData")
+
+load("D:\\Dropbox\\CSV\\DF1.RData")  
+
+DF1
+```
+
+
+### 2.7 반복문과 조건문    
+
+#### for 문을 활용한 반복문 작성     
+
+- 반복문의 기초 - 반복 횟수만큼     
+
+```{r}
+print(1)
+print(2)
+print(3)
+print(4)
+print(5)
+```
+
+
+- 반복문 기초 - for()    
+
+```{r}
+for(k in 1:5){
+  
+  print(k)
+  
+}
+```
+
+- 이중 반복문 - for(for())    
+
+```{r}
+for(i in c("A","B")){
+  
+  for(j in 1:2){
+    
+    print(paste0(i,j))
+    
+  }
+}
+```
+
+- 반복문을 활용한 데이터 저장
+
+```{r}
+FOR_V = c()
+
+for(k in 1:5){
+  
+  FOR_V[k] = 2 * k + 1
+  
+}
+
+FOR_V
+```
+
+```{r}
+for(i in 1:9){
+  
+  for(j in 1:9){
+    
+    print(i*j)
+    
+  }
+}
+```
+
+```{r}
+Multiply = list()
+
+for(i in 1:9){
+  
+  Vec = c()
+  
+  for(j in 1:9){
+    
+    Vec[j] = i*j
+    
+  }
+  
+  Multiply[[i]] = Vec
+  
+}
+
+Multiply
+```
+
+#### 2.7.2 assign을 활용한 할당문 작성    
+
+```{r}
+List_Files = list.files("D:\\CSV\\Assign\\")
+List_Files
+```
+
+```{r}
+List_Length = length(List_Files)
+for(k in 1:List_Length){
+  
+  assign(List_Files[k],
+         read.csv(paste0("D:\\CSV\\Assign\\",List_Files[k])))
+  
+}
+```
+
+
+- 벡터를 동시에 생성
+
+```{r}
+for(k in 1:10){
+  
+  assign(paste0("Assign",k),
+         seq(k,k*10,length.out = 10))
+  
+}
+```
+
+#### 2.7.3 if, ifelse를 활용한 조건문 적용   
+
+- 논리문에 대한 소개    
+- 논리문에 대한 이해     
+
+```{r}
+A = 2
+A == 2
+```
+
+
+```{r}
+A != 2
+```
+
+
+```{r}
+V10 = c(1,2,3,4,5,6)
+V10 < 4
+```
+
+- 논리문에 대한 정보 추출 - sum(TRUE), which(TRUE)     
+
+```{r}
+sum(V10 < 4)
+which(V10 < 4)
+```
+
+- 간단한 조건문 작성 - ifelse()   
+
+```{r}
+Grade = c(4.3,4.2,4.1,
+          3.8,3.3,2.5,1.2,
+          0,0,0) 
+
+Grade2 = ifelse(Grade > 0 , "P","F")
+Grade2
+```
+
+
+```{r}
+Grade3 = ifelse(Grade > 4, "A",
+                ifelse(Grade > 3, "B",
+                       ifelse(Grade > 2,"C",
+                              ifelse(Grade > 1,"D","F"))))
+
+Grade3
+```
+
+- 복잡한 조건문 작성 - if()    
+
+```{r}
+Text = c("A","B","C","D")
+
+if("A" %in% Text){
+  
+  print("True A")
+  
+}else{
+  
+  print("False A")
+  
+}
+```
+
+
+```{r}
+if("E" %in% Text){
+  
+  print("True E")
+  
+}else if("B" %in% Text){
+  
+  print("True B")
+  
+}else{
+  
+  print("False")
+
+}
+```
+
+- 합/교집합 조건문 생성    
+
+```{r}
+English = c("A","B","C")
+Math = c("C","B","A")
+
+# 합집합
+Grade_A1 = ifelse(English == "A"|Math == "A", "A","Else")
+Grade_A1
+
+# 교집합
+Grade_A2 = ifelse(English == "A"&Math == "A", "A","Else")
+Grade_A2
+```
+
+
+### 2.8 결측치 처리    
+
+#### 2.8.1 결측치 데이터 탐색 - is.na()   
+
+```{r}
+# 데이터 생성
+M1 = c(1,2,3,NA,4,NA)
+M2 = c(6,NA,7,8,9,NA)
+
+Missing_Data = data.frame(
+  V1 = M1,
+  V2 = M2
+)
+
+Missing_Data
+
+# 결측치 탐색  
+is.na(M1)
+
+!is.na(M1)
+
+# 결측치 개수, 인덱스 출력
+sum(is.na(M1))
+
+sum(!is.na(M1))
+
+which(is.na(M1))
+
+# 데이터셋에서의 결측치 탐색
+colSums(is.na(Missing_Data))
+```
+
+#### 2.8.2 결측치 제거 - na.omit()    
+
+```{r}
+# 결측치가 포함된 행 제거
+Missing_Data[!is.na(Missing_Data[,c("V1")]),]
+
+Missing_Data[!is.na(Missing_Data[,c("V1")]) &
+               !is.na(Missing_Data[,c("V2")]),]
+
+Missing_Data
+```
+#### 2.8.3 결측치 데이터 대체    
+
+```{r}
+Missing_Data$V1[is.na(Missing_Data$V1)] = mean(Missing_Data$V1, na.rm = TRUE)
+Missing_Data$V2[is.na(Missing_Data$V2)] = median(Missing_Data$V2, na.rm = TRUE)
+Missing_Data
+```
+
+### 2.9 사용자 함수 정의     
+
+#### 2.9.1 function() 소개    
+
+```{r}
+F1 = function(x){
+  
+  y = 2*x + 1
+  
+  return(y)
+  
+}
+
+F1(x = 3)
+```
+
+```{r}
+F2 = function(x1,x2){
+  
+  y = 3*x1^2 + 2*x2 + 3
+  
+  return(y)
+}
+
+F2(x1 = 3,x2 = 4)
+```
+
+#### 2.9.2 function() 응용    
+
+- function() 응용 1     
+
+```{r}
+F4 = function(Input){
+
+  if(Input == 'Hello'){
+    
+    Response = "Hi"
+    
+  }else if(Input == "Sorry"){
+    
+    Response = "It's OK"
+    
+  }else{
+    
+    Response = "Error"
+    
+  }
+  
+  return(Response)
+  
+}
+
+F4(Input = "Hello")
+
+F4(Input = "DER")
+```
+
+- function() 응용 2      
+
+```{r}
+Normalization = function(x){
+  
+  y = (x-min(x))/(max(x)-min(x))
+  
+  return(y)
+  
+}
+
+V = 1:10
+Normalization(V)
+```
+
+### 2.11 중고차 데이터를 활용한 데이터 전처리 1 - apply    
+
+- 데이터 불러오기   
+
+```{r}
+DIR = "D:\\CSV\\UsedCar\\"
+Audi = read.csv(paste0(DIR, "Audi.csv"),stringsAsFactors = FALSE)
+str(Audi)
+
+```
+
+#### 2.11.1 데이터 연산 동시 처리    
+
+```{r}
+# apply
+Audi_S = Audi[,c("year","price","mileage","mpg")]
+Audi_S2 = Normalization(Audi_S)
+summary(Audi_S2)
+```
+
+
+```{r}
+R_Matrix = matrix(data = 0, 
+                  nrow = nrow(Audi_S),
+                  ncol = ncol(Audi_S))
+
+for(k in 1:ncol(Audi_S2)){
+  
+  R_Matrix[,k] = Normalization(Audi_S[,k])
+  
+  
+}
+
+R_DF = as.data.frame(R_Matrix)
+summary(R_DF)
+```
+
+
+```{r}
+R_DF2 = apply(Audi_S2, MARGIN = 2, FUN = Normalization)
+summary(R_DF2)
+```
+
+```{r}
+# lapply
+lapply(Audi_S2, Normalization)
+R_DF3 = as.data.frame(lapply(Audi_S2, Normalization))
+summary(R_DF3)
+```
+
+### 2.12 중고차 데이터를 활용한 데이터 전처리 2 - dplyr 패키지   
+
+#### 2.12.1 체인 연산자   
+
+```{r}
+library(dplyr)
+colMeans(filter(.data = Audi, year > 2016)[,c("tax","mpg","engineSize")]) 
+
+Audi %>%
+  filter(year > 2016) %>%
+  select(tax,mpg,engineSize) %>%
+  colMeans()
+
+```
+
+#### 2.12.2 데이터셋에 새로운 변수 추가   
+
+```{r}
+Audi2 = Audi %>%
+  mutate(tax2 = ifelse(tax > 100 , 1,0),
+         engineSize2 = round(engineSize))
+
+head(Audi2)
+```
+
+#### 2.12.3 데이터 집계
+
+```{r}
+# 그룹 간 빈도 수 계산 – group_by() + n()
+Audi3 = Audi %>%
+  group_by(transmission) %>%
+  summarise(Count = n())
+
+Audi3
+```
+
+
+```{r}
+Audi4 = Audi %>%
+  group_by(transmission) %>%
+  summarise(Count = n(),
+            Price_Mean = mean(price),
+            Price_Sd = sd(price))
+
+Audi4
+```
+
+
+```{r}
+#  Group변수가 2개일 떄
+
+Audi5 = Audi %>%
+  group_by(transmission,year) %>%
+  summarise(Count = n(),
+            Price_Mean = mean(price))
+
+head(Audi5)
+```
+
+
+```{r}
+# 그룹 간 비율 계산
+
+Audi6 = Audi %>%
+  group_by(transmission,year) %>%
+  summarise(Count = n(),
+            Price_Mean = mean(price)) %>%
+  mutate(Perc = Count/sum(Count))
+
+head(Audi6)
+```
+
+#### 2.12.4 데이터 정렬   
+
+```{r}
+# 오름차순
+Audi7 = Audi %>%
+  arrange(price)
+
+head(Audi7)
+
+# 내림차순
+Audi8 = Audi %>%
+  arrange(-price)
+
+head(Audi8)
+
+# 상위 n개 추출 - top_n()
+
+Audi20 = Audi %>%
+  arrange(-price) %>%
+  top_n(n = 5,wt = price)
+
+Audi20
+```
+
+#### 2.12.5 조건에 따른 데이터 추출   
+
+```{r}
+# 추출 조건이 1개인 경우
+Audi9 = Audi %>%
+  filter(year > 2016)
+
+head(Audi9)
+
+# 추출 조건이 2개인 경우
+Audi10 = Audi %>%
+  filter(year > 2016 & transmission == "Manual")
+
+head(Audi10)
+```
+
+
+#### 2.12.6 데이터 병합   
+
+```{r}
+Audi12 = Audi %>%
+  group_by(model) %>%
+  summarise(Count = n()) %>%
+  filter(model %in% c(" A1"," A2"," A3"," A4"))
+
+head(Audi12)
+
+Audi13 = Audi %>%
+  group_by(model) %>%
+  summarise(Mean = mean(price)) %>%
+  filter(model %in% c(" A3"," A4"," A5", " A6"))
+
+head(Audi13)
+
+# left join
+Audi14 = Audi12 %>%
+  left_join(Audi13, by = "model")
+
+head(Audi14)
+
+# right join
+Audi15 = Audi12 %>%
+  right_join(Audi13, by = "model")
+
+head(Audi15)
+
+# full join
+Audi16 = Audi12 %>%
+  full_join(Audi13, by = "model")
+
+head(Audi16)
+```
+
+#### 2.12.7 데이터 샘플링    
+
+- 무작위 데이터 추출 - sample_n(), sample_frac()    
+
+```{r}
+set.seed(123)
+Audi17 = Audi %>%
+  sample_n(size = 5)
+
+Audi17
+
+Audi18 = Audi %>%
+  sample_frac(size = 0.05)
+
+head(Audi18)
+```
+
+#### 2.18.8 중복 데이터 처리   
+
+- 중복 데이터 처리 기본
+
+```{r}
+# 중복 데이터 생성
+
+set.seed(1234)
+Audi19 = Audi %>%
+  mutate(Unique_Key = 1:nrow(Audi)) %>%
+  sample_frac(size = 1.5,replace = TRUE)
+
+head(Audi19)
+dim(Audi19)
+
+# 중복 수 확인
+sum(duplicated(Audi19$Unique_Key))
+
+# 중복 데이터 행 제거
+Audi19_2 = Audi19[!duplicated(Audi19$Unique_Key),]
+dim(Audi19_2)
+
+```
+
+- 중복 키가 2개 이상일 경우 - duplicated()
+
+```{r}
+# 중복 데이터 생성
+set.seed(1234)
+Audi19_3 = Audi %>%
+  mutate(Unique_Key = 1:nrow(Audi),
+         Unique_Key2 = nrow(Audi):1) %>%
+  sample_frac(size = 1.5,replace = TRUE)
+
+head(Audi19_3)
+dim(Audi19_3)
+
+# 중복된 행의 수 확인
+
+sum(duplicated(Audi19_3[,c("Unique_Key","Unique_Key2")]))
+
+# 중복 데이터 행 제거
+
+Audi19_4 = Audi19_3[!duplicated(Audi19_3[,c("Unique_Key","Unique_Key2")]),]
+dim(Audi19_4)
+```
+
+- dplyr 패키지를 활용한 중복 데이터 제거 - distinct() 
+
+```{r}
+Audi19_5 = Audi19_3 %>%
+  distinct(Unique_Key, Unique_Key2, .keep_all = TRUE) 
+
+dim(Audi19_5)
+```
+
+
+### 2.13 dplyr 응용   
+
+#### 2.13.1 데이터 전처리 응용 1
+
+```{r}
+P1 = Audi %>% 
+  mutate(year_G = ifelse(year < 2000, 1990,
+                         ifelse(year < 2010, 2000,2010))) %>%
+  group_by(year_G,transmission) %>%
+  summarise(Count = n(),
+            Mean_Price = mean(price),
+            Median_Price = median(price)) %>%
+  mutate(Perc = Count / sum(Count)) %>%
+  arrange(year_G,-Mean_Price)
+```
+
+#### 2.13.1 데이터 전처리 응용 2               
+
+```{r}
+P2 = Audi %>%
+  filter(price > quantile(price, probs = c(0.9))) %>%
+  group_by(model) %>%
+  summarise(Mean_Price = mean(price),
+            Mean_Mileage = mean(mileage),
+            Mean_Tax = mean(tax))
+
+P2
+```
+              
+#### 2.13.3 데이터 전처리 응용 3       
+
+```{r}
+DIR = "D:\\CSV\\UsedCar\\"
+ListFiles = list.files(DIR)
+List_Length = length(ListFiles)
+
+# audi, bmw, cclass
+
+Brand_Data = data.frame()
+
+for(k in 1:3){
+  
+    DF = read.csv(paste0(DIR,ListFiles[k]),stringsAsFactors = FALSE)
+    
+    DF2 = DF %>% 
+      mutate(year_G = ifelse(year < 2000, 1990,
+                         ifelse(year < 2010, 2000,2010))) %>%
+      group_by(year_G,transmission) %>%
+      summarise(Count = n(),
+                Mean_Price = mean(price),
+                Median_Price = median(price)) %>%
+      mutate(Perc = Count / sum(Count)) %>%
+      arrange(year_G,-Mean_Price) %>%
+      mutate(Brand = gsub(".csv","",ListFiles[k]))
+    
+    Brand_Data = Brand_Data %>%
+      bind_rows(DF2)
+    
+}
+
+Brand_Data
+```
+### 2.14 중고차 데이터를 활용한 데이터 시각화 기초 (ggplot2 패키지)    
+
+#### 2.14.1 ggplot2 기본 문법   
+
+```{r}
+library(ggplot2)
+DIR = "D:\\CSV\\UsedCar\\"
+Audi = read.csv(paste0(DIR, "audi.csv"),stringsAsFactors = FALSE)
+```
+
+- 도화지 준비   
+
+```{r}
+ggplot()
+```
+
+- 축 그리기    
+
+```{r}
+ggplot(Audi,aes(x =  year))
+```
+
+- 그래프 그리기   
+
+```{r}
+ggplot(Audi,aes(x =  year)) + 
+  geom_bar()
+```
+
+- 그래프 배경 수정   
+
+```{r}
+ggplot(Audi,aes(x =  year)) + 
+  geom_bar() +
+  theme_classic()
+```
+
+- 그래프 축의 글꼴 수정   
+
+```{r}
+ggplot(Audi,aes(x =  year)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, face = "bold"),
+        axis.text.y = element_text(size = 8, face = "bold"),
+        axis.title.x = element_text(size = 8, face = "bold"),
+        axis.title.y = element_text(size = 7, face = "bold")) 
+```
+
+
+```{r}
+ggplot(Audi,aes(x =  year)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(text = element_text(size = 7, face = "bold"))
+```
+
+- 그래프 축의 간격 조정
+
+```{r}
+ggplot(Audi,aes(x =  year)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, face = "bold"),
+        axis.text.y = element_text(size = 8, face = "bold"),
+        axis.title.x = element_text(size = 8, face = "bold"),
+        axis.title.y = element_text(size = 7, face = "bold")) +
+  scale_x_continuous(breaks = seq(1990,2020,by = 2),
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = seq(0,4000,by = 500),
+                     expand = c(0,0))
+
+```
+
+- 그래프 색 지정   
+
+```{r}
+ggplot(Audi,aes(x =  year, fill = transmission)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, face = "bold"),
+        axis.text.y = element_text(size = 8, face = "bold"),
+        axis.title.x = element_text(size = 8, face = "bold"),
+        axis.title.y = element_text(size = 7, face = "bold")) +
+  scale_x_continuous(breaks = seq(1990,2020,by = 2),
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = seq(0,4000,by = 500),
+                     expand = c(0,0))
+```
+
+- 그래프 범례 위치 조정   
+
+```{r}
+ggplot(Audi,aes(x =  year, fill = transmission)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, face = "bold"),
+        axis.text.y = element_text(size = 8, face = "bold"),
+        axis.title.x = element_text(size = 8, face = "bold"),
+        axis.title.y = element_text(size = 7, face = "bold"),
+        legend.text = element_text(size = 8, face = "bold"),
+        legend.title = element_text(size = 8, face = "bold"),
+        legend.position = "bottom") +
+  scale_x_continuous(breaks = seq(1990,2020,by = 2),
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = seq(0,4000,by = 500),
+                     expand = c(0,0)) +
+  labs(fill = "TRANSMISSION")
+```
+
+#### 2.14.2 ggplot2 활용   
+
+- 히스토그램   
+
+```{r}
+ggplot(Audi, aes(x = price)) +
+  geom_histogram() +
+  theme_classic()
+```
+
+- 히스토그램 구간 수정   
+
+```{r}
+ggplot(Audi, aes(x = price)) +
+  geom_histogram(bins = 100) +
+  theme_classic()
+```
+
+- 히스토그램 색, 축 수정   
+
+```{r}
+ggplot(Audi, aes(x = price, fill = transmission)) +
+  geom_histogram(bins = 100) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_continuous(expand = c(0,0))
+```
+
+- 산점도    
+
+```{r}
+ggplot(Audi, aes(x = mpg, y = price)) +
+  geom_point() +
+  theme_classic()
+```
+
+- 산점도 색 수정   
+
+```{r}
+ggplot(Audi, aes(x = mpg, y = price, col = fuelType)) +
+  geom_point() +
+  theme_classic()
+```
+
+- 회귀선  
+
+```{r}
+ggplot(Audi, aes(x = mpg, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  theme_classic()
+```
+
+```{r}
+ggplot(Audi, aes(x = mpg, y = price)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  theme_classic()
+```
+
+- 박스플롯   
+
+```{r}
+# 박스플롯 기본
+ggplot(Audi, aes(x = fuelType, y = price)) +
+  geom_boxplot(outlier.colour = "red") +
+  theme_classic()
+
+# 박스플롯 색 지정
+ggplot(Audi, aes(x = fuelType, y = price, fill = transmission)) +
+  geom_boxplot(outlier.colour = "red") +
+  theme_classic()
+```
+
+- 선 그래프   
+
+```{r}
+# 선그래프 오류   
+ggplot(Audi,aes(x = year, y = price)) +
+  geom_line() +
+  geom_point()
+
+# 선 그래프 작성을 위한 데이터 집계
+Year_DF = Audi %>%
+  group_by(year) %>%
+  summarise(Price = mean(price))
+
+Year_DF
+
+# 선 그래프 기본
+ggplot(Year_DF, aes(x = year, y = Price)) +
+  geom_line() +
+  geom_point() +
+  theme_bw()
+
+# 선그래프 색 수정
+Year_DF2 = Audi %>%
+  group_by(year,fuelType) %>%
+  summarise(Price = mean(price))
+
+Year_DF2
+
+ggplot(Year_DF2, aes(x = year, y = Price, col = fuelType)) +
+  geom_line() +
+  geom_point() +
+  theme_bw()
+```
+
+### 2.15 데이터 구조 변환   
+
+```{r}
+Audi_S = Audi %>%
+  group_by(model, year) %>%
+  summarise(Count = n())
+
+Audi_S
+```
+
+#### 2.15.1 reshape 패키지 활용  
+
+- 데이터 구조 변환 1 cast()
+
+```{r}
+library(reshape)
+Audi_Cast = Audi_S %>%
+  cast(model~year,fill = 0, value = "Count")
+
+Audi_Cast
+
+```
+
+- 데이터 구조 변환 2 melt() 
+
+```{r}
+Audi_Melt = Audi_Cast %>%
+  melt(id.vars = c("model"))
+
+Audi_Melt
+```
+
+
